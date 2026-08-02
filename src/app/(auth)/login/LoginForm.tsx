@@ -12,21 +12,20 @@ export function LoginForm() {
   return (
     <form action={formAction} className="space-y-4">
       <div>
-        <label htmlFor="phone" className="block text-sm font-medium">
-          휴대폰 번호
+        <label htmlFor="name" className="block text-sm font-medium">
+          이름
         </label>
         <input
-          id="phone"
-          name="phone"
-          type="tel"
+          id="name"
+          name="name"
+          type="text"
           required
-          placeholder="01012345678"
           className="mt-1 w-full rounded border px-3 py-2"
         />
       </div>
       <div>
         <label htmlFor="pin" className="block text-sm font-medium">
-          PIN (뒷자리 4자리)
+          PIN (휴대폰 뒷자리 4자리)
         </label>
         <input
           id="pin"

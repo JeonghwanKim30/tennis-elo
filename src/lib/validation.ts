@@ -15,7 +15,7 @@ export const signupSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  phone: phoneSchema,
+  name: z.string().trim().min(1, "이름을 입력해주세요."),
   pin: z.string().regex(/^\d{4}$/, "PIN은 4자리 숫자입니다."),
 });
 

@@ -15,7 +15,7 @@ export async function loginAction(
   formData: FormData
 ): Promise<LoginState> {
   const parsed = loginSchema.safeParse({
-    phone: formData.get("phone"),
+    name: formData.get("name"),
     pin: formData.get("pin"),
   });
 
@@ -23,27 +23,32 @@ export async function loginAction(
     return { error: parsed.error.issues[0]?.message ?? "입력값을 확인해주세요." };
   }
 
-  const { phone, pin } = parsed.data;
+  const { name, pin } = parsed.data;
 
-  const user = await prisma.user.findUnique({ where: { phone } });
-  if (!user) {
-    return { error: "등록되지 않은 휴대폰 번호입니다." };
+  // 이름은 중복될 수 있으므로 동명이인 후보 중 PIN이 일치하는 계정을 찾는다.
+  const candidates = await prisma.user.findMany({ where: { name } });
+
+  let matchedUser = null;
+  for (const candidate of candidates) {
+    if (await bcrypt.compare(pin, candidate.pinHash)) {
+      matchedUser = candidate;
+      break;
+    }
   }
-  if (user.status === "PENDING") {
+
+  if (!matchedUser) {
+    return { error: "이름 또는 PIN이 일치하지 않습니다." };
+  }
+  if (matchedUser.status === "PENDING") {
     return { error: "관리자 승인 대기 중입니다. 승인 후 로그인할 수 있습니다." };
   }
-  if (user.status === "REJECTED") {
+  if (matchedUser.status === "REJECTED") {
     return { error: "가입이 거절되었습니다. 관리자에게 문의해주세요." };
   }
 
-  const valid = await bcrypt.compare(pin, user.pinHash);
-  if (!valid) {
-    return { error: "PIN이 일치하지 않습니다." };
-  }
-
   const session = await getSession();
-  session.userId = user.id;
-  session.role = user.role;
+  session.userId = matchedUser.id;
+  session.role = matchedUser.role;
   await session.save();
 
   redirect("/profile");
