@@ -1,2 +1,2 @@
-# TeddiBearELO
-TeddiBearELO
+# tennis-elo
+tennis-elo
