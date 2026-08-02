@@ -1,11 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Match } from "@/generated/prisma/client";
-
-const RESULT_LABEL: Record<string, string> = {
-  TEAM_A_WIN: "A팀 승",
-  TEAM_B_WIN: "B팀 승",
-  DRAW: "무승부",
-};
+import { RESULT_LABEL } from "@/lib/matchDisplay";
 
 function teamOf(m: Match, userId: string): "A" | "B" | null {
   if (m.teamAPlayer1 === userId || m.teamAPlayer2 === userId) return "A";
@@ -97,7 +92,12 @@ export default async function H2HPage({
                   {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
                   {m.playedAt.toISOString().slice(0, 10)}
                 </p>
-                <p className="font-medium">{RESULT_LABEL[m.result]}</p>
+                <p className="font-medium">
+                  {m.result ? RESULT_LABEL[m.result] : ""}
+                  {m.teamAScore !== null && m.teamBScore !== null
+                    ? ` (${m.teamAScore}:${m.teamBScore})`
+                    : ""}
+                </p>
               </li>
             ))}
           </ul>

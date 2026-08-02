@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
-import {
-  calculateDoublesElo,
-  calculateSinglesElo,
-  INITIAL_RATING,
-  type MatchOutcome,
-} from "@/lib/elo";
+import { INITIAL_RATING } from "@/lib/elo";
+import { applyEloForMatch, recalculateAllElo } from "@/lib/eloEngine";
+import { matchScoreSchema } from "@/lib/validation";
+import type { MatchResult } from "@/generated/prisma/client";
+
+export interface MatchScoreState {
+  error?: string;
+}
 
 export async function approveUserAction(userId: string) {
   const admin = await requireAdmin();
@@ -50,100 +52,43 @@ export async function rejectMatchAction(matchId: string) {
     data: { status: "REJECTED", approvedAt: new Date(), approvedBy: admin.id },
   });
   revalidatePath("/admin");
+  revalidatePath("/matches");
 }
 
-export async function approveMatchAction(matchId: string) {
+export async function enterMatchScoreAction(
+  matchId: string,
+  _prevState: MatchScoreState,
+  formData: FormData
+): Promise<MatchScoreState> {
   const admin = await requireAdmin();
+
+  const parsed = matchScoreSchema.safeParse({
+    teamAScore: formData.get("teamAScore"),
+    teamBScore: formData.get("teamBScore"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "점수를 확인해주세요." };
+  }
+  const { teamAScore, teamBScore } = parsed.data;
+  const result: MatchResult =
+    teamAScore > teamBScore ? "TEAM_A_WIN" : teamAScore < teamBScore ? "TEAM_B_WIN" : "DRAW";
 
   await prisma.$transaction(async (tx) => {
     const match = await tx.match.findUniqueOrThrow({ where: { id: matchId } });
     if (match.status !== "PENDING") return;
 
-    const teamAIds = [match.teamAPlayer1, match.teamAPlayer2].filter(
-      (id): id is string => !!id
-    );
-    const teamBIds = [match.teamBPlayer1, match.teamBPlayer2].filter(
-      (id): id is string => !!id
-    );
-    const allIds = [...teamAIds, ...teamBIds];
-
-    await tx.eloRating.createMany({
-      data: allIds.map((userId) => ({ userId, type: match.type, rating: INITIAL_RATING })),
-      skipDuplicates: true,
-    });
-
-    const ratingRows = await tx.eloRating.findMany({
-      where: { userId: { in: allIds }, type: match.type },
-    });
-    const ratingByUser = new Map(ratingRows.map((r) => [r.userId, r]));
-
-    const outcomeForTeamA: MatchOutcome =
-      match.result === "TEAM_A_WIN" ? "WIN" : match.result === "TEAM_B_WIN" ? "LOSS" : "DRAW";
-    const outcomeForTeamB: MatchOutcome =
-      match.result === "TEAM_A_WIN" ? "LOSS" : match.result === "TEAM_B_WIN" ? "WIN" : "DRAW";
-
-    let newRatings: Map<string, number>;
-
-    if (match.type === "SINGLES") {
-      const a = ratingByUser.get(teamAIds[0])!;
-      const b = ratingByUser.get(teamBIds[0])!;
-      const result = calculateSinglesElo(a.rating, b.rating, outcomeForTeamA);
-      newRatings = new Map([
-        [teamAIds[0], result.ratingA],
-        [teamBIds[0], result.ratingB],
-      ]);
-    } else {
-      const a1 = ratingByUser.get(teamAIds[0])!;
-      const a2 = ratingByUser.get(teamAIds[1])!;
-      const b1 = ratingByUser.get(teamBIds[0])!;
-      const b2 = ratingByUser.get(teamBIds[1])!;
-      const result = calculateDoublesElo(
-        [a1.rating, a2.rating],
-        [b1.rating, b2.rating],
-        outcomeForTeamA
-      );
-      newRatings = new Map([
-        [teamAIds[0], result.teamA[0]],
-        [teamAIds[1], result.teamA[1]],
-        [teamBIds[0], result.teamB[0]],
-        [teamBIds[1], result.teamB[1]],
-      ]);
-    }
+    await applyEloForMatch(tx, match, result);
 
     const maxSeq = await tx.match.aggregate({ _max: { approvalSeq: true } });
     const nextSeq = (maxSeq._max.approvalSeq ?? 0) + 1;
-
-    for (const userId of allIds) {
-      const before = ratingByUser.get(userId)!;
-      const after = newRatings.get(userId)!;
-      const outcome = teamAIds.includes(userId) ? outcomeForTeamA : outcomeForTeamB;
-
-      await tx.eloRating.update({
-        where: { userId_type: { userId, type: match.type } },
-        data: {
-          rating: after,
-          wins: { increment: outcome === "WIN" ? 1 : 0 },
-          losses: { increment: outcome === "LOSS" ? 1 : 0 },
-          draws: { increment: outcome === "DRAW" ? 1 : 0 },
-        },
-      });
-
-      await tx.eloHistory.create({
-        data: {
-          matchId: match.id,
-          userId,
-          type: match.type,
-          ratingBefore: before.rating,
-          ratingAfter: after,
-          delta: after - before.rating,
-        },
-      });
-    }
 
     await tx.match.update({
       where: { id: match.id },
       data: {
         status: "APPROVED",
+        result,
+        teamAScore,
+        teamBScore,
         approvedAt: new Date(),
         approvedBy: admin.id,
         approvalSeq: nextSeq,
@@ -152,6 +97,34 @@ export async function approveMatchAction(matchId: string) {
   });
 
   revalidatePath("/admin");
+  revalidatePath("/matches");
+  revalidatePath("/leaderboard");
+  revalidatePath("/profile");
+
+  return {};
+}
+
+/**
+ * 경기를 완전히 삭제한다. 이미 ELO에 반영된(APPROVED) 경기라면
+ * 전체 경기를 approvalSeq 순서대로 다시 재생해 ELO/전적을 재계산한다.
+ * (ELO는 순서 의존적인 계산이라 부분 롤백이 불가능하다.)
+ */
+export async function deleteMatchAction(matchId: string) {
+  await requireAdmin();
+
+  await prisma.$transaction(async (tx) => {
+    const match = await tx.match.findUniqueOrThrow({ where: { id: matchId } });
+    const wasApproved = match.status === "APPROVED";
+
+    await tx.match.delete({ where: { id: matchId } });
+
+    if (wasApproved) {
+      await recalculateAllElo(tx);
+    }
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/matches");
   revalidatePath("/leaderboard");
   revalidatePath("/profile");
 }

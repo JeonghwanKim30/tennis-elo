@@ -2,12 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { formatPhone } from "@/lib/phone";
-
-const RESULT_LABEL: Record<string, string> = {
-  TEAM_A_WIN: "A팀 승",
-  TEAM_B_WIN: "B팀 승",
-  DRAW: "무승부",
-};
+import { RESULT_LABEL } from "@/lib/matchDisplay";
 
 type Tab = "all" | "singles" | "doubles";
 
@@ -134,7 +129,10 @@ export default async function ProfilePage({
                   {m.playedAt.toISOString().slice(0, 10)}
                 </p>
                 <p className="font-medium">
-                  {teamA} vs {teamB} — {RESULT_LABEL[m.result]}
+                  {teamA} vs {teamB} — {m.result ? RESULT_LABEL[m.result] : ""}
+                  {m.teamAScore !== null && m.teamBScore !== null
+                    ? ` (${m.teamAScore}:${m.teamBScore})`
+                    : ""}
                 </p>
               </li>
             );

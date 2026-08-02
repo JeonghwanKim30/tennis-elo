@@ -27,12 +27,11 @@ export const matchSubmitSchema = z
     teamAPlayer2: z.string().optional(),
     teamBPlayer1: z.string().min(1),
     teamBPlayer2: z.string().optional(),
-    result: z.enum(["TEAM_A_WIN", "TEAM_B_WIN", "DRAW"]),
   })
   .refine(
     (data) =>
       data.type === "SINGLES" || (!!data.teamAPlayer2 && !!data.teamBPlayer2),
-    { message: "복식은 각 팀에 2명씩 선택해야 합니다.", path: ["teamAPlayer2"] }
+    { message: "복식은 각 팀에 2명씩(포핸드/백핸드) 선택해야 합니다.", path: ["teamAPlayer2"] }
   )
   .refine(
     (data) => {
@@ -46,3 +45,8 @@ export const matchSubmitSchema = z
     },
     { message: "같은 선수를 중복해서 선택할 수 없습니다.", path: ["teamBPlayer1"] }
   );
+
+export const matchScoreSchema = z.object({
+  teamAScore: z.coerce.number().int().min(0, "0 이상의 숫자를 입력해주세요."),
+  teamBScore: z.coerce.number().int().min(0, "0 이상의 숫자를 입력해주세요."),
+});

@@ -12,6 +12,7 @@ export async function NavBar() {
           테니스 전적
         </Link>
         <div className="flex flex-wrap items-center gap-4 text-sm">
+          <Link href="/matches">경기 목록</Link>
           <Link href="/leaderboard">리더보드</Link>
           <Link href="/h2h">상대전적</Link>
           {user && (

@@ -23,7 +23,6 @@ export async function submitMatchAction(
     teamAPlayer2: formData.get("teamAPlayer2") || undefined,
     teamBPlayer1: formData.get("teamBPlayer1"),
     teamBPlayer2: formData.get("teamBPlayer2") || undefined,
-    result: formData.get("result"),
   });
 
   if (!parsed.success) {
@@ -58,11 +57,11 @@ export async function submitMatchAction(
       teamAPlayer2: data.type === "DOUBLES" ? data.teamAPlayer2 : null,
       teamBPlayer1: data.teamBPlayer1,
       teamBPlayer2: data.type === "DOUBLES" ? data.teamBPlayer2 : null,
-      result: data.result,
       submittedBy: user.id,
     },
   });
 
   revalidatePath("/matches/new");
+  revalidatePath("/matches");
   return { success: true };
 }
