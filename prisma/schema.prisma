@@ -1,0 +1,106 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum MatchType {
+  SINGLES
+  DOUBLES
+}
+
+enum MatchResult {
+  TEAM_A_WIN
+  TEAM_B_WIN
+  DRAW
+}
+
+enum MatchStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id         String     @id @default(cuid())
+  name       String
+  phone      String     @unique
+  pinHash    String
+  role       Role       @default(USER)
+  status     UserStatus @default(PENDING)
+  createdAt  DateTime   @default(now())
+  approvedAt DateTime?
+  approvedBy String?
+
+  ratings          EloRating[]
+  submittedMatches Match[]     @relation("SubmittedMatches")
+  eloHistory       EloHistory[]
+}
+
+model EloRating {
+  userId String
+  type   MatchType
+  rating Float @default(1200)
+  wins   Int   @default(0)
+  losses Int   @default(0)
+  draws  Int   @default(0)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([userId, type])
+}
+
+model Match {
+  id           String      @id @default(cuid())
+  type         MatchType
+  playedAt     DateTime
+  teamAPlayer1 String
+  teamAPlayer2 String?
+  teamBPlayer1 String
+  teamBPlayer2 String?
+  result       MatchResult
+  status       MatchStatus @default(PENDING)
+  submittedBy  String
+  submittedAt  DateTime    @default(now())
+  approvedBy   String?
+  approvedAt   DateTime?
+  approvalSeq  Int?        @unique
+
+  submitter  User         @relation("SubmittedMatches", fields: [submittedBy], references: [id])
+  eloHistory EloHistory[]
+}
+
+model EloHistory {
+  id           String    @id @default(cuid())
+  matchId      String
+  userId       String
+  type         MatchType
+  ratingBefore Float
+  ratingAfter  Float
+  delta        Float
+  createdAt    DateTime  @default(now())
+
+  match Match @relation(fields: [matchId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@unique([matchId, userId])
+}
