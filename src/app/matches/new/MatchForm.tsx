@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
+import { PlayerCombobox } from "@/components/PlayerCombobox";
 import { submitMatchAction, type MatchSubmitState } from "./actions";
 
 const initialState: MatchSubmitState = {};
@@ -55,25 +56,33 @@ export function MatchForm({ players }: { players: Player[] }) {
 
       <fieldset className="rounded border p-3">
         <legend className="px-1 text-sm font-medium">A팀</legend>
-        <PlayerSelect
-          name="teamAPlayer1"
-          players={players}
-          label={type === "DOUBLES" ? "포핸드" : "선수"}
-        />
+        <div className="mt-2">
+          <PlayerCombobox
+            name="teamAPlayer1"
+            players={players}
+            label={type === "DOUBLES" ? "포핸드" : "선수"}
+          />
+        </div>
         {type === "DOUBLES" && (
-          <PlayerSelect name="teamAPlayer2" players={players} label="백핸드" />
+          <div className="mt-2">
+            <PlayerCombobox name="teamAPlayer2" players={players} label="백핸드" />
+          </div>
         )}
       </fieldset>
 
       <fieldset className="rounded border p-3">
         <legend className="px-1 text-sm font-medium">B팀</legend>
-        <PlayerSelect
-          name="teamBPlayer1"
-          players={players}
-          label={type === "DOUBLES" ? "포핸드" : "선수"}
-        />
+        <div className="mt-2">
+          <PlayerCombobox
+            name="teamBPlayer1"
+            players={players}
+            label={type === "DOUBLES" ? "포핸드" : "선수"}
+          />
+        </div>
         {type === "DOUBLES" && (
-          <PlayerSelect name="teamBPlayer2" players={players} label="백핸드" />
+          <div className="mt-2">
+            <PlayerCombobox name="teamBPlayer2" players={players} label="백핸드" />
+          </div>
         )}
       </fieldset>
 
@@ -87,31 +96,5 @@ export function MatchForm({ players }: { players: Player[] }) {
         {pending ? "제출 중..." : "경기 등록"}
       </button>
     </form>
-  );
-}
-
-function PlayerSelect({
-  name,
-  players,
-  label,
-}: {
-  name: string;
-  players: Player[];
-  label: string;
-}) {
-  return (
-    <div className="mt-2">
-      <label htmlFor={name} className="block text-xs text-gray-500">
-        {label}
-      </label>
-      <select id={name} name={name} required className="mt-1 w-full rounded border px-3 py-2">
-        <option value="">선택하세요</option>
-        {players.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
-    </div>
   );
 }

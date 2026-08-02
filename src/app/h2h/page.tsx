@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import type { Match } from "@/generated/prisma/client";
-import { RESULT_LABEL } from "@/lib/matchDisplay";
+import { SearchForm } from "./SearchForm";
+
+type Outcome = "WIN" | "LOSS" | "DRAW";
 
 function teamOf(m: Match, userId: string): "A" | "B" | null {
   if (m.teamAPlayer1 === userId || m.teamAPlayer2 === userId) return "A";
@@ -8,12 +10,26 @@ function teamOf(m: Match, userId: string): "A" | "B" | null {
   return null;
 }
 
+function opponentsOf(m: Match, selfSide: "A" | "B"): string[] {
+  const other =
+    selfSide === "A"
+      ? [m.teamBPlayer1, m.teamBPlayer2]
+      : [m.teamAPlayer1, m.teamAPlayer2];
+  return other.filter((id): id is string => !!id);
+}
+
+function outcomeFor(m: Match, selfSide: "A" | "B"): Outcome {
+  if (m.result === "DRAW") return "DRAW";
+  if (m.result === "TEAM_A_WIN") return selfSide === "A" ? "WIN" : "LOSS";
+  return selfSide === "A" ? "LOSS" : "WIN";
+}
+
 export default async function H2HPage({
   searchParams,
 }: {
-  searchParams: Promise<{ a?: string; b?: string }>;
+  searchParams: Promise<{ player?: string }>;
 }) {
-  const { a, b } = await searchParams;
+  const { player: playerId } = await searchParams;
 
   const players = await prisma.user.findMany({
     where: { status: "ACTIVE" },
@@ -22,120 +38,111 @@ export default async function H2HPage({
   });
   const nameById = new Map(players.map((p) => [p.id, p.name]));
 
-  let summary: { aWins: number; bWins: number; draws: number } | null = null;
   let matches: Match[] = [];
+  const totalsByOpponent = new Map<string, { wins: number; losses: number; draws: number }>();
 
-  if (a && b && a !== b) {
-    const candidates = await prisma.match.findMany({
+  if (playerId) {
+    matches = await prisma.match.findMany({
       where: {
         status: "APPROVED",
-        OR: [{ teamAPlayer1: a }, { teamAPlayer2: a }, { teamBPlayer1: a }, { teamBPlayer2: a }],
+        OR: [
+          { teamAPlayer1: playerId },
+          { teamAPlayer2: playerId },
+          { teamBPlayer1: playerId },
+          { teamBPlayer2: playerId },
+        ],
       },
       orderBy: { approvalSeq: "desc" },
     });
 
-    matches = candidates.filter((m) => {
-      const sideA = teamOf(m, a);
-      const sideB = teamOf(m, b);
-      return sideA !== null && sideB !== null && sideA !== sideB;
-    });
-
-    let aWins = 0;
-    let bWins = 0;
-    let draws = 0;
     for (const m of matches) {
-      const sideA = teamOf(m, a);
-      if (m.result === "DRAW") {
-        draws += 1;
-      } else if (
-        (m.result === "TEAM_A_WIN" && sideA === "A") ||
-        (m.result === "TEAM_B_WIN" && sideA === "B")
-      ) {
-        aWins += 1;
-      } else {
-        bWins += 1;
+      const selfSide = teamOf(m, playerId);
+      if (!selfSide) continue;
+      const outcome = outcomeFor(m, selfSide);
+      for (const oppId of opponentsOf(m, selfSide)) {
+        const rec = totalsByOpponent.get(oppId) ?? { wins: 0, losses: 0, draws: 0 };
+        if (outcome === "WIN") rec.wins += 1;
+        else if (outcome === "LOSS") rec.losses += 1;
+        else rec.draws += 1;
+        totalsByOpponent.set(oppId, rec);
       }
     }
-    summary = { aWins, bWins, draws };
   }
+
+  const opponentRows = Array.from(totalsByOpponent.entries())
+    .map(([opponentId, rec]) => ({ opponentId, ...rec, total: rec.wins + rec.losses + rec.draws }))
+    .sort((a, b) => b.total - a.total || (nameById.get(a.opponentId) ?? "").localeCompare(nameById.get(b.opponentId) ?? ""));
 
   return (
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-12">
       <h1 className="text-2xl font-bold">상대전적</h1>
 
-      <form method="get" className="flex flex-wrap items-end gap-3">
-        <PlayerSelect name="a" label="선수 A" players={players} selected={a} />
-        <PlayerSelect name="b" label="선수 B" players={players} selected={b} />
-        <button type="submit" className="rounded bg-blue-600 px-4 py-2 text-sm text-white">
-          조회
-        </button>
-      </form>
+      <SearchForm players={players} defaultValue={playerId} />
 
-      {a && b && a === b && (
-        <p className="text-sm text-red-600">서로 다른 두 선수를 선택해주세요.</p>
-      )}
-
-      {summary && (
-        <div>
-          <div className="rounded border p-4 text-center text-lg font-medium">
-            {nameById.get(a!) ?? "?"} {summary.aWins}승 {summary.draws}무 {summary.bWins}패{" "}
-            {nameById.get(b!) ?? "?"}
-          </div>
-
-          <ul className="mt-4 space-y-2">
-            {matches.length === 0 && (
-              <p className="text-sm text-gray-500">맞대결 기록이 없습니다.</p>
+      {playerId && (
+        <div className="space-y-8">
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">
+              {nameById.get(playerId) ?? "?"}의 상대별 전적
+            </h2>
+            {opponentRows.length === 0 ? (
+              <p className="text-sm text-gray-500">완료된 경기 기록이 없습니다.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-gray-500">
+                    <th className="py-2">상대</th>
+                    <th>전적</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {opponentRows.map((row) => (
+                    <tr key={row.opponentId} className="border-b">
+                      <td className="py-2">{nameById.get(row.opponentId) ?? "?"}</td>
+                      <td className="text-gray-700">
+                        {row.wins}승 {row.draws}무 {row.losses}패 (총 {row.total}경기)
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
-            {matches.map((m) => (
-              <li key={m.id} className="rounded border px-4 py-3 text-sm">
-                <p className="text-gray-500">
-                  {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
-                  {m.playedAt.toISOString().slice(0, 10)}
-                </p>
-                <p className="font-medium">
-                  {m.result ? RESULT_LABEL[m.result] : ""}
-                  {m.teamAScore !== null && m.teamBScore !== null
-                    ? ` (${m.teamAScore}:${m.teamBScore})`
-                    : ""}
-                </p>
-              </li>
-            ))}
-          </ul>
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">최근 경기</h2>
+            <ul className="space-y-2">
+              {matches.length === 0 && (
+                <p className="text-sm text-gray-500">완료된 경기가 없습니다.</p>
+              )}
+              {matches.map((m) => {
+                const selfSide = teamOf(m, playerId);
+                if (!selfSide) return null;
+                const outcome = outcomeFor(m, selfSide);
+                const outcomeLabel =
+                  outcome === "WIN" ? "승" : outcome === "LOSS" ? "패" : "무";
+                const opponentNames = opponentsOf(m, selfSide)
+                  .map((id) => nameById.get(id) ?? "?")
+                  .join(" / ");
+                return (
+                  <li key={m.id} className="rounded border px-4 py-3 text-sm">
+                    <p className="text-gray-500">
+                      {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
+                      {m.playedAt.toISOString().slice(0, 10)}
+                    </p>
+                    <p className="font-medium">
+                      vs {opponentNames} — {outcomeLabel}
+                      {m.teamAScore !== null && m.teamBScore !== null
+                        ? ` (${m.teamAScore}:${m.teamBScore})`
+                        : ""}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         </div>
       )}
     </main>
-  );
-}
-
-function PlayerSelect({
-  name,
-  label,
-  players,
-  selected,
-}: {
-  name: string;
-  label: string;
-  players: { id: string; name: string }[];
-  selected?: string;
-}) {
-  return (
-    <div>
-      <label htmlFor={name} className="block text-xs text-gray-500">
-        {label}
-      </label>
-      <select
-        id={name}
-        name={name}
-        defaultValue={selected ?? ""}
-        className="mt-1 rounded border px-3 py-2 text-sm"
-      >
-        <option value="">선택하세요</option>
-        {players.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
-    </div>
   );
 }
