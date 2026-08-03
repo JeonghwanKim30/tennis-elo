@@ -45,16 +45,6 @@ export async function rejectUserAction(userId: string) {
   revalidatePath("/admin");
 }
 
-export async function rejectMatchAction(matchId: string) {
-  const admin = await requireAdmin();
-  await prisma.match.update({
-    where: { id: matchId },
-    data: { status: "REJECTED", approvedAt: new Date(), approvedBy: admin.id },
-  });
-  revalidatePath("/admin");
-  revalidatePath("/matches");
-}
-
 export async function enterMatchScoreAction(
   matchId: string,
   _prevState: MatchScoreState,
@@ -73,9 +63,9 @@ export async function enterMatchScoreAction(
   const result: MatchResult =
     teamAScore > teamBScore ? "TEAM_A_WIN" : teamAScore < teamBScore ? "TEAM_B_WIN" : "DRAW";
 
-  await prisma.$transaction(async (tx) => {
+  const matchDayId = await prisma.$transaction(async (tx) => {
     const match = await tx.match.findUniqueOrThrow({ where: { id: matchId } });
-    if (match.status !== "PENDING") return;
+    if (match.status !== "PENDING") return match.matchDayId;
 
     await applyEloForMatch(tx, match, result);
 
@@ -94,10 +84,13 @@ export async function enterMatchScoreAction(
         approvalSeq: nextSeq,
       },
     });
+
+    return match.matchDayId;
   });
 
   revalidatePath("/admin");
   revalidatePath("/matches");
+  revalidatePath(`/matches/${matchDayId}`);
   revalidatePath("/leaderboard");
   revalidatePath("/profile");
 
@@ -105,14 +98,14 @@ export async function enterMatchScoreAction(
 }
 
 /**
- * 경기를 완전히 삭제한다. 이미 ELO에 반영된(APPROVED) 경기라면
- * 전체 경기를 approvalSeq 순서대로 다시 재생해 ELO/전적을 재계산한다.
- * (ELO는 순서 의존적인 계산이라 부분 롤백이 불가능하다.)
+ * 경기를 완전히 삭제한다 (예정된 경기 취소, 완료된 경기 삭제 공용).
+ * 이미 ELO에 반영된(APPROVED) 경기였다면 전체 경기를 approvalSeq 순서대로
+ * 다시 재생해 ELO/전적을 재계산한다 (ELO는 순서 의존적인 계산이라 부분 롤백이 불가능하다).
  */
 export async function deleteMatchAction(matchId: string) {
   await requireAdmin();
 
-  await prisma.$transaction(async (tx) => {
+  const matchDayId = await prisma.$transaction(async (tx) => {
     const match = await tx.match.findUniqueOrThrow({ where: { id: matchId } });
     const wasApproved = match.status === "APPROVED";
 
@@ -121,10 +114,13 @@ export async function deleteMatchAction(matchId: string) {
     if (wasApproved) {
       await recalculateAllElo(tx);
     }
+
+    return match.matchDayId;
   });
 
   revalidatePath("/admin");
   revalidatePath("/matches");
+  revalidatePath(`/matches/${matchDayId}`);
   revalidatePath("/leaderboard");
   revalidatePath("/profile");
 }

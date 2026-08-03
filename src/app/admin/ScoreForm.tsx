@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { enterMatchScoreAction, rejectMatchAction, type MatchScoreState } from "./actions";
+import { deleteMatchAction, enterMatchScoreAction, type MatchScoreState } from "./actions";
 
 const initialState: MatchScoreState = {};
 
@@ -37,7 +37,7 @@ export function ScoreForm({ matchId }: { matchId: string }) {
           완료 처리
         </button>
       </form>
-      <form action={rejectMatchAction.bind(null, matchId)}>
+      <form action={deleteMatchAction.bind(null, matchId)}>
         <button className="rounded bg-gray-200 px-3 py-1 text-sm">취소</button>
       </form>
       {state.error && <p className="text-xs text-red-600">{state.error}</p>}
