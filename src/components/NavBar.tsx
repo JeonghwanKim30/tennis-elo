@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
 import { logoutAction } from "@/app/actions/auth";
+import { NavMenu } from "@/components/NavMenu";
 
 export async function NavBar() {
   const user = await getCurrentUser();
@@ -13,7 +14,7 @@ export async function NavBar() {
           <img src="/brand/teddi-icon.png" alt="" className="h-8 w-8 rounded-full" />
           테디비
         </Link>
-        <div className="flex flex-wrap items-center gap-4 text-sm">
+        <NavMenu>
           <Link href="/matches">경기 목록</Link>
           <Link href="/leaderboard">리더보드</Link>
           <Link href="/h2h">상대전적</Link>
@@ -31,7 +32,7 @@ export async function NavBar() {
               <Link href="/signup">회원가입</Link>
             </>
           )}
-        </div>
+        </NavMenu>
       </nav>
     </header>
   );

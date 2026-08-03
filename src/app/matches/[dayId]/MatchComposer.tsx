@@ -84,7 +84,7 @@ export function MatchComposer({
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className={type === "DOUBLES" ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "grid grid-cols-2 gap-4"}>
         <TeamSlots
           label="A팀"
           type={type}
@@ -211,7 +211,7 @@ function Slot({
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
       onClick={onClick}
-      className="flex h-24 w-20 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-center hover:border-green-400"
+      className="flex h-20 w-16 shrink-0 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-center hover:border-green-400 sm:h-24 sm:w-20"
     >
       {player ? (
         <PlayerBadge user={player} name={player.name} />
