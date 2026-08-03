@@ -17,13 +17,14 @@ export async function signupAction(
   const parsed = signupSchema.safeParse({
     name: formData.get("name"),
     phone: formData.get("phone"),
+    gender: formData.get("gender"),
   });
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "입력값을 확인해주세요." };
   }
 
-  const { name, phone } = parsed.data;
+  const { name, phone, gender } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { phone } });
   if (existing) {
@@ -34,7 +35,7 @@ export async function signupAction(
   const pinHash = await bcrypt.hash(pin, 10);
 
   await prisma.user.create({
-    data: { name, phone, pinHash },
+    data: { name, phone, gender, pinHash },
   });
 
   return { success: true };

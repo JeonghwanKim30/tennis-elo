@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { formatPhone } from "@/lib/phone";
-import { RESULT_LABEL, teamLabel } from "@/lib/matchDisplay";
+import { RESULT_LABEL } from "@/lib/matchDisplay";
+import { TeamBadges, type TeamPlayer } from "@/components/TeamBadges";
 import { approveUserAction, deleteMatchAction, rejectUserAction } from "./actions";
 import { ScoreForm } from "./ScoreForm";
 
@@ -15,10 +16,12 @@ export default async function AdminPage() {
     }),
     prisma.match.findMany({
       where: { status: "PENDING" },
+      include: { matchDay: true },
       orderBy: { submittedAt: "asc" },
     }),
     prisma.match.findMany({
       where: { status: "APPROVED" },
+      include: { matchDay: true },
       orderBy: { approvalSeq: "desc" },
       take: 30,
     }),
@@ -35,10 +38,9 @@ export default async function AdminPage() {
   );
   const players = await prisma.user.findMany({
     where: { id: { in: playerIds } },
-    select: { id: true, name: true },
+    select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
   });
-  const nameById = new Map(players.map((p) => [p.id, p.name]));
-  const name = (id: string | null) => (id ? nameById.get(id) ?? "?" : undefined);
+  const playerById = new Map<string, TeamPlayer>(players.map((p) => [p.id, p]));
 
   return (
     <main className="mx-auto max-w-3xl space-y-10 px-4 py-12">
@@ -61,7 +63,7 @@ export default async function AdminPage() {
                 </div>
                 <div className="flex gap-2">
                   <form action={approveUserAction.bind(null, u.id)}>
-                    <button className="rounded bg-blue-600 px-3 py-1 text-sm text-white">
+                    <button className="rounded bg-green-600 px-3 py-1 text-sm text-white">
                       승인
                     </button>
                   </form>
@@ -83,23 +85,31 @@ export default async function AdminPage() {
           <p className="text-sm text-gray-500">점수 입력을 기다리는 경기가 없습니다.</p>
         ) : (
           <ul className="space-y-2">
-            {scheduledMatches.map((m) => (
-              <li key={m.id} className="rounded border px-4 py-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">
-                      {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
-                      {m.playedAt.toISOString().slice(0, 10)}
-                    </p>
-                    <p className="font-medium">
-                      {teamLabel(m.type, name(m.teamAPlayer1)!, name(m.teamAPlayer2))} vs{" "}
-                      {teamLabel(m.type, name(m.teamBPlayer1)!, name(m.teamBPlayer2))}
-                    </p>
+            {scheduledMatches.map((m) => {
+              const a1 = playerById.get(m.teamAPlayer1);
+              const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
+              const b1 = playerById.get(m.teamBPlayer1);
+              const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
+              if (!a1 || !b1) return null;
+              return (
+                <li key={m.id} className="rounded border px-4 py-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="mb-2 text-sm text-gray-500">
+                        {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
+                        {m.matchDay.date.toISOString().slice(0, 10)}
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <TeamBadges type={m.type} player1={a1} player2={a2} />
+                        <span className="text-xs text-gray-400">vs</span>
+                        <TeamBadges type={m.type} player1={b1} player2={b2} />
+                      </div>
+                    </div>
+                    <ScoreForm matchId={m.id} />
                   </div>
-                  <ScoreForm matchId={m.id} />
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
@@ -110,32 +120,41 @@ export default async function AdminPage() {
           <p className="text-sm text-gray-500">완료된 경기가 없습니다.</p>
         ) : (
           <ul className="space-y-2">
-            {completedMatches.map((m) => (
-              <li key={m.id} className="rounded border px-4 py-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">
-                      {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
-                      {m.playedAt.toISOString().slice(0, 10)}
-                    </p>
-                    <p className="font-medium">
-                      {teamLabel(m.type, name(m.teamAPlayer1)!, name(m.teamAPlayer2))} vs{" "}
-                      {teamLabel(m.type, name(m.teamBPlayer1)!, name(m.teamBPlayer2))}
-                      {" — "}
-                      {m.result ? RESULT_LABEL[m.result] : ""}
-                      {m.teamAScore !== null && m.teamBScore !== null
-                        ? ` (${m.teamAScore}:${m.teamBScore})`
-                        : ""}
-                    </p>
+            {completedMatches.map((m) => {
+              const a1 = playerById.get(m.teamAPlayer1);
+              const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
+              const b1 = playerById.get(m.teamBPlayer1);
+              const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
+              if (!a1 || !b1) return null;
+              return (
+                <li key={m.id} className="rounded border px-4 py-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="mb-2 text-sm text-gray-500">
+                        {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
+                        {m.matchDay.date.toISOString().slice(0, 10)}
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <TeamBadges type={m.type} player1={a1} player2={a2} />
+                        <span className="text-xs text-gray-400">vs</span>
+                        <TeamBadges type={m.type} player1={b1} player2={b2} />
+                        <span className="font-medium">
+                          {m.result ? RESULT_LABEL[m.result] : ""}
+                          {m.teamAScore !== null && m.teamBScore !== null
+                            ? ` (${m.teamAScore}:${m.teamBScore})`
+                            : ""}
+                        </span>
+                      </div>
+                    </div>
+                    <form action={deleteMatchAction.bind(null, m.id)}>
+                      <button className="rounded bg-red-100 px-3 py-1 text-sm text-red-700">
+                        삭제
+                      </button>
+                    </form>
                   </div>
-                  <form action={deleteMatchAction.bind(null, m.id)}>
-                    <button className="rounded bg-red-100 px-3 py-1 text-sm text-red-700">
-                      삭제
-                    </button>
-                  </form>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

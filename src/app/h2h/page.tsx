@@ -1,8 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import type { Match } from "@/generated/prisma/client";
+import { Avatar } from "@/components/Avatar";
+import type { TeamPlayer } from "@/components/TeamBadges";
 import { SearchForm } from "./SearchForm";
 
 type Outcome = "WIN" | "LOSS" | "DRAW";
+type MatchWithDay = Match & { matchDay: { date: Date } };
 
 function teamOf(m: Match, userId: string): "A" | "B" | null {
   if (m.teamAPlayer1 === userId || m.teamAPlayer2 === userId) return "A";
@@ -33,12 +36,13 @@ export default async function H2HPage({
 
   const players = await prisma.user.findMany({
     where: { status: "ACTIVE" },
-    select: { id: true, name: true },
+    select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
     orderBy: { name: "asc" },
   });
   const nameById = new Map(players.map((p) => [p.id, p.name]));
+  const playerById = new Map<string, TeamPlayer>(players.map((p) => [p.id, p]));
 
-  let matches: Match[] = [];
+  let matches: MatchWithDay[] = [];
   const totalsByOpponent = new Map<string, { wins: number; losses: number; draws: number }>();
 
   if (playerId) {
@@ -52,6 +56,7 @@ export default async function H2HPage({
           { teamBPlayer2: playerId },
         ],
       },
+      include: { matchDay: true },
       orderBy: { approvalSeq: "desc" },
     });
 
@@ -96,14 +101,26 @@ export default async function H2HPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {opponentRows.map((row) => (
-                    <tr key={row.opponentId} className="border-b">
-                      <td className="py-2">{nameById.get(row.opponentId) ?? "?"}</td>
-                      <td className="text-gray-700">
-                        {row.wins}승 {row.draws}무 {row.losses}패 (총 {row.total}경기)
-                      </td>
-                    </tr>
-                  ))}
+                  {opponentRows.map((row) => {
+                    const opponent = playerById.get(row.opponentId);
+                    return (
+                      <tr key={row.opponentId} className="border-b">
+                        <td className="py-2">
+                          {opponent ? (
+                            <div className="flex items-center gap-2">
+                              <Avatar user={opponent} size="sm" />
+                              <span>{opponent.name}</span>
+                            </div>
+                          ) : (
+                            "?"
+                          )}
+                        </td>
+                        <td className="text-gray-700">
+                          {row.wins}승 {row.draws}무 {row.losses}패 (총 {row.total}경기)
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
@@ -121,21 +138,31 @@ export default async function H2HPage({
                 const outcome = outcomeFor(m, selfSide);
                 const outcomeLabel =
                   outcome === "WIN" ? "승" : outcome === "LOSS" ? "패" : "무";
-                const opponentNames = opponentsOf(m, selfSide)
-                  .map((id) => nameById.get(id) ?? "?")
-                  .join(" / ");
+                const opponents = opponentsOf(m, selfSide)
+                  .map((id) => playerById.get(id))
+                  .filter((p): p is TeamPlayer => !!p);
                 return (
                   <li key={m.id} className="rounded border px-4 py-3 text-sm">
-                    <p className="text-gray-500">
+                    <p className="mb-2 text-gray-500">
                       {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
-                      {m.playedAt.toISOString().slice(0, 10)}
+                      {m.matchDay.date.toISOString().slice(0, 10)}
                     </p>
-                    <p className="font-medium">
-                      vs {opponentNames} — {outcomeLabel}
-                      {m.teamAScore !== null && m.teamBScore !== null
-                        ? ` (${m.teamAScore}:${m.teamBScore})`
-                        : ""}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        {opponents.map((p) => (
+                          <div key={p.id} className="flex items-center gap-1">
+                            <Avatar user={p} size="sm" />
+                            <span>{p.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <span className="font-medium">
+                        — {outcomeLabel}
+                        {m.teamAScore !== null && m.teamBScore !== null
+                          ? ` (${m.teamAScore}:${m.teamBScore})`
+                          : ""}
+                      </span>
+                    </div>
                   </li>
                 );
               })}

@@ -32,7 +32,7 @@ export function ScoreForm({ matchId }: { matchId: string }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+          className="rounded bg-green-600 px-3 py-1 text-sm text-white disabled:opacity-50"
         >
           완료 처리
         </button>

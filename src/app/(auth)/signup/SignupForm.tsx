@@ -16,7 +16,7 @@ export function SignupForm() {
         <p className="text-sm text-gray-500">
           관리자 승인 후 로그인할 수 있습니다. 승인까지 시간이 걸릴 수 있습니다.
         </p>
-        <Link href="/login" className="inline-block text-blue-600 underline">
+        <Link href="/login" className="inline-block text-green-600 underline">
           로그인 페이지로 이동
         </Link>
       </div>
@@ -54,17 +54,30 @@ export function SignupForm() {
           PIN 번호는 휴대폰 번호의 뒷자리 4자리로 자동 설정됩니다.
         </p>
       </div>
+      <div>
+        <span className="block text-sm font-medium">성별</span>
+        <div className="mt-1 flex gap-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="radio" name="gender" value="MALE" required defaultChecked />
+            남
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="radio" name="gender" value="FEMALE" required />
+            여
+          </label>
+        </div>
+      </div>
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded bg-blue-600 py-2 text-white disabled:opacity-50"
+        className="w-full rounded bg-green-600 py-2 text-white disabled:opacity-50"
       >
         {pending ? "제출 중..." : "가입 신청"}
       </button>
       <p className="text-center text-sm text-gray-500">
         이미 계정이 있나요?{" "}
-        <Link href="/login" className="text-blue-600 underline">
+        <Link href="/login" className="text-green-600 underline">
           로그인
         </Link>
       </p>

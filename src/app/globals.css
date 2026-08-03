@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
+/* 테니스 코트를 연상시키는 밝은 초록/노랑 톤. 시스템이 다크모드여도 항상 밝게 고정한다. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6fbf3;
+  --foreground: #14361f;
 }
 
 @theme inline {
@@ -10,13 +11,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

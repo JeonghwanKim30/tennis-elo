@@ -12,6 +12,7 @@ export const phoneSchema = z
 export const signupSchema = z.object({
   name: z.string().trim().min(1, "이름을 입력해주세요.").max(50),
   phone: phoneSchema,
+  gender: z.enum(["MALE", "FEMALE"], { message: "성별을 선택해주세요." }),
 });
 
 export const loginSchema = z.object({
@@ -22,7 +23,6 @@ export const loginSchema = z.object({
 export const matchSubmitSchema = z
   .object({
     type: z.enum(["SINGLES", "DOUBLES"]),
-    playedAt: z.string().min(1, "경기 날짜를 입력해주세요."),
     teamAPlayer1: z.string().min(1),
     teamAPlayer2: z.string().optional(),
     teamBPlayer1: z.string().min(1),

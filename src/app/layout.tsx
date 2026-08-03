@@ -14,8 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "테니스 전적 관리",
+  title: "테디비 - 테니스 전적 관리",
   description: "동호회 테니스 전적 및 ELO 레이팅 관리",
+  icons: {
+    icon: "/brand/teddi-icon.png",
+  },
 };
 
 export default function RootLayout({

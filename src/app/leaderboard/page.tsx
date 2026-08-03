@@ -1,16 +1,20 @@
 import { prisma } from "@/lib/prisma";
+import { Avatar } from "@/components/Avatar";
+import type { AvatarUser } from "@/lib/avatar";
 
 export default async function LeaderboardPage() {
+  const userSelect = { name: true, gender: true, profileImage: true, profileImageType: true } as const;
+
   const [singles, doubles] = await Promise.all([
     prisma.eloRating.findMany({
       where: { type: "SINGLES" },
       orderBy: { rating: "desc" },
-      include: { user: { select: { name: true } } },
+      include: { user: { select: userSelect } },
     }),
     prisma.eloRating.findMany({
       where: { type: "DOUBLES" },
       orderBy: { rating: "desc" },
-      include: { user: { select: { name: true } } },
+      include: { user: { select: userSelect } },
     }),
   ]);
 
@@ -28,7 +32,14 @@ function RankingTable({
   rows,
 }: {
   title: string;
-  rows: { userId: string; rating: number; wins: number; losses: number; draws: number; user: { name: string } }[];
+  rows: {
+    userId: string;
+    rating: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    user: AvatarUser & { name: string };
+  }[];
 }) {
   return (
     <section>
@@ -47,10 +58,15 @@ function RankingTable({
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.userId} className="border-b">
+              <tr key={r.userId} className={`border-b ${i === 0 ? "bg-lime-50" : ""}`}>
                 <td className="py-2">{i + 1}</td>
-                <td>{r.user.name}</td>
-                <td className="font-medium">{Math.round(r.rating)}</td>
+                <td>
+                  <div className="flex items-center gap-2">
+                    <Avatar user={r.user} size="sm" />
+                    <span>{r.user.name}</span>
+                  </div>
+                </td>
+                <td className="font-medium text-green-700">{Math.round(r.rating)}</td>
                 <td className="text-gray-500">
                   {r.wins}승 {r.losses}패 {r.draws}무
                 </td>

@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { formatPhone } from "@/lib/phone";
 import { RESULT_LABEL } from "@/lib/matchDisplay";
+import { avatarSrc } from "@/lib/avatar";
+import { TeamBadges, type TeamPlayer } from "@/components/TeamBadges";
+import { AvatarUploader } from "./AvatarUploader";
 
 type Tab = "all" | "singles" | "doubles";
 
@@ -37,6 +40,7 @@ export default async function ProfilePage({
         { teamBPlayer2: user.id },
       ],
     },
+    include: { matchDay: true },
     orderBy: { approvalSeq: "desc" },
   });
 
@@ -51,25 +55,32 @@ export default async function ProfilePage({
   );
   const players = await prisma.user.findMany({
     where: { id: { in: playerIds } },
-    select: { id: true, name: true },
+    select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
   });
-  const nameById = new Map(players.map((p) => [p.id, p.name]));
+  const playerById = new Map<string, TeamPlayer>(players.map((p) => [p.id, p]));
 
   return (
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-12">
-      <div>
-        <h1 className="text-2xl font-bold">{user.name}</h1>
-        <p className="text-sm text-gray-500">{formatPhone(user.phone)}</p>
+      <div className="flex items-center gap-4">
+        <AvatarUploader currentSrc={avatarSrc(user)} />
+        <div>
+          <h1 className="text-2xl font-bold">{user.name}</h1>
+          <p className="text-sm text-gray-500">{formatPhone(user.phone)}</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded border p-4 text-center">
           <p className="text-sm text-gray-500">단식 ELO</p>
-          <p className="text-3xl font-bold">{Math.round(singles?.rating ?? 1200)}</p>
+          <p className="text-3xl font-bold text-green-700">
+            {Math.round(singles?.rating ?? 1200)}
+          </p>
         </div>
         <div className="rounded border p-4 text-center">
           <p className="text-sm text-gray-500">복식 ELO</p>
-          <p className="text-3xl font-bold">{Math.round(doubles?.rating ?? 1200)}</p>
+          <p className="text-3xl font-bold text-green-700">
+            {Math.round(doubles?.rating ?? 1200)}
+          </p>
         </div>
       </div>
 
@@ -109,31 +120,33 @@ export default async function ProfilePage({
           )}
         </div>
 
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {matches.length === 0 && (
             <p className="text-sm text-gray-500">경기 기록이 없습니다.</p>
           )}
           {matches.map((m) => {
-            const teamA = [m.teamAPlayer1, m.teamAPlayer2]
-              .filter((id): id is string => !!id)
-              .map((id) => (id === user.id ? "나" : nameById.get(id) ?? "?"))
-              .join(" / ");
-            const teamB = [m.teamBPlayer1, m.teamBPlayer2]
-              .filter((id): id is string => !!id)
-              .map((id) => (id === user.id ? "나" : nameById.get(id) ?? "?"))
-              .join(" / ");
+            const teamAP1 = playerById.get(m.teamAPlayer1);
+            const teamAP2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
+            const teamBP1 = playerById.get(m.teamBPlayer1);
+            const teamBP2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
+            if (!teamAP1 || !teamBP1) return null;
             return (
               <li key={m.id} className="rounded border px-4 py-3 text-sm">
-                <p className="text-gray-500">
+                <p className="mb-2 text-gray-500">
                   {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
-                  {m.playedAt.toISOString().slice(0, 10)}
+                  {m.matchDay.date.toISOString().slice(0, 10)}
                 </p>
-                <p className="font-medium">
-                  {teamA} vs {teamB} — {m.result ? RESULT_LABEL[m.result] : ""}
-                  {m.teamAScore !== null && m.teamBScore !== null
-                    ? ` (${m.teamAScore}:${m.teamBScore})`
-                    : ""}
-                </p>
+                <div className="flex items-center gap-3">
+                  <TeamBadges type={m.type} player1={teamAP1} player2={teamAP2} />
+                  <span className="text-xs text-gray-400">vs</span>
+                  <TeamBadges type={m.type} player1={teamBP1} player2={teamBP2} />
+                  <span className="ml-auto font-medium">
+                    {m.result ? RESULT_LABEL[m.result] : ""}
+                    {m.teamAScore !== null && m.teamBScore !== null
+                      ? ` (${m.teamAScore}:${m.teamBScore})`
+                      : ""}
+                  </span>
+                </div>
               </li>
             );
           })}
@@ -180,7 +193,7 @@ function TabLink({ tab, current, label }: { tab: Tab; current: Tab; label: strin
     <Link
       href={href}
       className={`border-b-2 px-3 py-2 text-sm ${
-        isActive ? "border-blue-600 font-medium text-blue-600" : "border-transparent text-gray-500"
+        isActive ? "border-green-600 font-medium text-green-600" : "border-transparent text-gray-500"
       }`}
     >
       {label}

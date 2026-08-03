@@ -17,6 +17,11 @@ enum Role {
   ADMIN
 }
 
+enum Gender {
+  MALE
+  FEMALE
+}
+
 enum UserStatus {
   PENDING
   ACTIVE
@@ -41,19 +46,45 @@ enum MatchStatus {
 }
 
 model User {
-  id         String     @id @default(cuid())
-  name       String
-  phone      String     @unique
-  pinHash    String
-  role       Role       @default(USER)
-  status     UserStatus @default(PENDING)
-  createdAt  DateTime   @default(now())
-  approvedAt DateTime?
-  approvedBy String?
+  id               String     @id @default(cuid())
+  name             String
+  phone            String     @unique
+  pinHash          String
+  role             Role       @default(USER)
+  status           UserStatus @default(PENDING)
+  gender           Gender     @default(MALE)
+  profileImage     Bytes?
+  profileImageType String?
+  createdAt        DateTime   @default(now())
+  approvedAt       DateTime?
+  approvedBy       String?
 
-  ratings          EloRating[]
-  submittedMatches Match[]     @relation("SubmittedMatches")
-  eloHistory       EloHistory[]
+  ratings                EloRating[]
+  submittedMatches       Match[]               @relation("SubmittedMatches")
+  eloHistory             EloHistory[]
+  matchDayParticipations MatchDayParticipant[]
+  createdMatchDays       MatchDay[]            @relation("CreatedMatchDays")
+}
+
+model MatchDay {
+  id        String   @id @default(cuid())
+  date      DateTime
+  createdBy String
+  createdAt DateTime @default(now())
+
+  creator      User                  @relation("CreatedMatchDays", fields: [createdBy], references: [id])
+  participants MatchDayParticipant[]
+  matches      Match[]
+}
+
+model MatchDayParticipant {
+  matchDayId String
+  userId     String
+
+  matchDay MatchDay @relation(fields: [matchDayId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@id([matchDayId, userId])
 }
 
 model EloRating {
@@ -73,8 +104,8 @@ model EloRating {
 // result/score는 admin이 점수를 입력해 경기를 완료 처리하기 전까지는 비어있다 (status=PENDING).
 model Match {
   id           String      @id @default(cuid())
+  matchDayId   String
   type         MatchType
-  playedAt     DateTime
   teamAPlayer1 String
   teamAPlayer2 String?
   teamBPlayer1 String
@@ -89,6 +120,7 @@ model Match {
   approvedAt   DateTime?
   approvalSeq  Int?        @unique
 
+  matchDay   MatchDay     @relation(fields: [matchDayId], references: [id])
   submitter  User         @relation("SubmittedMatches", fields: [submittedBy], references: [id])
   eloHistory EloHistory[]
 }

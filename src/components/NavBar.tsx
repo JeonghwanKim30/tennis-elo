@@ -8,19 +8,16 @@ export async function NavBar() {
   return (
     <header className="border-b">
       <nav className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <Link href="/" className="text-lg font-bold">
-          테니스 전적
+        <Link href="/" className="flex items-center gap-2 text-lg font-bold">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/teddi-icon.png" alt="" className="h-8 w-8 rounded-full" />
+          테디비
         </Link>
         <div className="flex flex-wrap items-center gap-4 text-sm">
           <Link href="/matches">경기 목록</Link>
           <Link href="/leaderboard">리더보드</Link>
           <Link href="/h2h">상대전적</Link>
-          {user && (
-            <>
-              <Link href="/matches/new">경기 등록</Link>
-              <Link href="/profile">내 프로필</Link>
-            </>
-          )}
+          {user && <Link href="/profile">내 프로필</Link>}
           {user?.role === "ADMIN" && <Link href="/admin">관리자</Link>}
           {user ? (
             <form action={logoutAction}>
