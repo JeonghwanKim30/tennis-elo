@@ -23,6 +23,11 @@ export async function createMatchDayAction(
     return { error: "날짜가 올바르지 않습니다." };
   }
 
+  const existing = await prisma.matchDay.findUnique({ where: { date } });
+  if (existing) {
+    redirect(`/matches/${existing.id}`);
+  }
+
   const day = await prisma.matchDay.create({ data: { date, createdBy: user.id } });
   redirect(`/matches/${day.id}`);
 }

@@ -68,7 +68,7 @@ model User {
 
 model MatchDay {
   id        String   @id @default(cuid())
-  date      DateTime
+  date      DateTime @unique
   createdBy String
   createdAt DateTime @default(now())
 
