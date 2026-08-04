@@ -11,11 +11,11 @@ export function AuthCard({
         <div className="mb-6 flex flex-col items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/brand/teddi-icon.png"
-            alt="테디비"
-            className="h-20 w-20 rounded-full shadow-md"
+            src="/brand/teddi-logo.png"
+            alt="테디베어"
+            className="h-20 w-20 rounded-full object-cover shadow-md"
           />
-          <h1 className="text-xl font-bold text-primary">테디비</h1>
+          <h1 className="text-xl font-bold text-primary">테디베어</h1>
         </div>
         <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-center text-lg font-semibold">{title}</h2>

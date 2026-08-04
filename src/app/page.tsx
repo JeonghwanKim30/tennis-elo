@@ -7,8 +7,8 @@ export default async function Home() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col items-center gap-6 px-4 py-24 text-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/teddi-icon.png" alt="테디비" className="h-24 w-24 rounded-full shadow-md" />
-      <h1 className="text-3xl font-bold text-primary">테디비</h1>
+      <img src="/brand/teddi-logo.png" alt="테디베어" className="h-24 w-24 rounded-full object-cover shadow-md" />
+      <h1 className="text-3xl font-bold text-primary">테디베어</h1>
       <p className="text-gray-500">
         동호회 경기 전적을 기록하고, 단식·복식 ELO 레이팅을 자동으로 계산합니다.
       </p>

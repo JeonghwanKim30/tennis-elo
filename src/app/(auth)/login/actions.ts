@@ -51,5 +51,7 @@ export async function loginAction(
   session.role = matchedUser.role;
   await session.save();
 
-  redirect("/profile");
+  const next = formData.get("next");
+  const isSafeNext = typeof next === "string" && next.startsWith("/") && !next.startsWith("//");
+  redirect(isSafeNext && next !== "/login" ? next : "/profile");
 }

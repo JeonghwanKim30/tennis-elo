@@ -11,8 +11,8 @@ export async function NavBar() {
       <nav className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3">
         <Link href="/" className="flex items-center gap-2 text-lg font-bold">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/teddi-icon.png" alt="" className="h-8 w-8 rounded-full" />
-          테디비
+          <img src="/brand/teddi-logo.png" alt="" className="h-8 w-8 rounded-full object-cover" />
+          테디베어
         </Link>
         <NavMenu>
           <Link href="/matches" className="btn-press">
