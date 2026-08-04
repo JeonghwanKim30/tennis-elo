@@ -121,7 +121,7 @@ export function MatchComposer({
                 selectedChip === p.id ? "bg-gold/20 ring-2 ring-gold" : ""
               }`}
             >
-              <PlayerBadge user={p} name={p.name} />
+              <PlayerBadge avatarSrc={p.avatarSrc} name={p.name} />
             </button>
           ))}
           {pool.length === 0 && (
@@ -214,7 +214,7 @@ function Slot({
       className="flex h-20 w-16 shrink-0 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-center hover:border-primary sm:h-24 sm:w-20"
     >
       {player ? (
-        <PlayerBadge user={player} name={player.name} />
+        <PlayerBadge avatarSrc={player.avatarSrc} name={player.name} />
       ) : (
         <span className="text-xs text-gray-400">{label}</span>
       )}

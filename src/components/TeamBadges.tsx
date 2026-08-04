@@ -1,10 +1,10 @@
 import { PlayerBadge } from "@/components/PlayerBadge";
-import type { AvatarUser } from "@/lib/avatar";
 import type { MatchType } from "@/generated/prisma/client";
 
-export interface TeamPlayer extends AvatarUser {
+export interface TeamPlayer {
   id: string;
   name: string;
+  avatarSrc: string;
 }
 
 export function TeamBadges({
@@ -19,12 +19,12 @@ export function TeamBadges({
   return (
     <div className="flex items-start gap-3">
       <div className="flex flex-col items-center gap-1">
-        <PlayerBadge user={player1} name={player1.name} />
+        <PlayerBadge avatarSrc={player1.avatarSrc} name={player1.name} />
         {type === "DOUBLES" && <span className="text-[10px] text-gray-400">포핸드</span>}
       </div>
       {type === "DOUBLES" && player2 && (
         <div className="flex flex-col items-center gap-1">
-          <PlayerBadge user={player2} name={player2.name} />
+          <PlayerBadge avatarSrc={player2.avatarSrc} name={player2.name} />
           <span className="text-[10px] text-gray-400">백핸드</span>
         </div>
       )}

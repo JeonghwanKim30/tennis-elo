@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { avatarSrc } from "@/lib/avatar";
 import { RESULT_LABEL } from "@/lib/matchDisplay";
 import { PlayerBadge } from "@/components/PlayerBadge";
 import { TeamBadges, type TeamPlayer } from "@/components/TeamBadges";
@@ -31,7 +32,13 @@ export default async function MatchDayPage({
   });
   if (!day) notFound();
 
-  const participants: TeamPlayer[] = day.participants.map((p) => p.user);
+  // profileImage(Bytes)는 클라이언트 컴포넌트(MatchComposerPanel)로 넘어갈 수 없으므로
+  // 문자열 avatarSrc로 미리 변환해둔다.
+  const participants: TeamPlayer[] = day.participants.map((p) => ({
+    id: p.user.id,
+    name: p.user.name,
+    avatarSrc: avatarSrc(p.user),
+  }));
   const participantIds = new Set(participants.map((p) => p.id));
   const playerById = new Map(participants.map((p) => [p.id, p]));
 
@@ -57,7 +64,7 @@ export default async function MatchDayPage({
           )}
           {participants.map((p) => (
             <div key={p.id} className="flex flex-col items-center">
-              <PlayerBadge user={p} name={p.name} />
+              <PlayerBadge avatarSrc={p.avatarSrc} name={p.name} />
               {user && (
                 <form action={removeParticipantAction.bind(null, day.id, p.id)}>
                   <button className="mt-1 text-[10px] text-destructive underline">제거</button>

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Match } from "@/generated/prisma/client";
 import { Avatar } from "@/components/Avatar";
+import { avatarSrc } from "@/lib/avatar";
 import type { TeamPlayer } from "@/components/TeamBadges";
 import { SearchForm } from "./SearchForm";
 
@@ -39,8 +40,13 @@ export default async function H2HPage({
     select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
     orderBy: { name: "asc" },
   });
+  // 검색창(클라이언트 컴포넌트)에는 이름 검색에 필요한 최소 정보만 넘긴다.
+  // profileImage(Bytes)는 서버-클라이언트 경계를 못 넘어가므로 여기서 걸러낸다.
+  const searchablePlayers = players.map((p) => ({ id: p.id, name: p.name }));
   const nameById = new Map(players.map((p) => [p.id, p.name]));
-  const playerById = new Map<string, TeamPlayer>(players.map((p) => [p.id, p]));
+  const playerById = new Map<string, TeamPlayer>(
+    players.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
+  );
 
   let matches: MatchWithDay[] = [];
   const totalsByOpponent = new Map<string, { wins: number; losses: number; draws: number }>();
@@ -82,7 +88,7 @@ export default async function H2HPage({
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-12">
       <h1 className="text-2xl font-bold">상대전적</h1>
 
-      <SearchForm players={players} defaultValue={playerId} />
+      <SearchForm players={searchablePlayers} defaultValue={playerId} />
 
       {playerId && (
         <div className="space-y-8">
@@ -108,7 +114,7 @@ export default async function H2HPage({
                         <td className="py-2">
                           {opponent ? (
                             <div className="flex items-center gap-2">
-                              <Avatar user={opponent} size="sm" />
+                              <Avatar src={opponent.avatarSrc} size="sm" />
                               <span>{opponent.name}</span>
                             </div>
                           ) : (
@@ -151,7 +157,7 @@ export default async function H2HPage({
                       <div className="flex items-center gap-2">
                         {opponents.map((p) => (
                           <div key={p.id} className="flex items-center gap-1">
-                            <Avatar user={p} size="sm" />
+                            <Avatar src={p.avatarSrc} size="sm" />
                             <span>{p.name}</span>
                           </div>
                         ))}

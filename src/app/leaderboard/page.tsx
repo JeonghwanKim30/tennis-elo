@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Avatar } from "@/components/Avatar";
-import type { AvatarUser } from "@/lib/avatar";
+import { avatarSrc, type AvatarUser } from "@/lib/avatar";
 
 export default async function LeaderboardPage() {
   const userSelect = { name: true, gender: true, profileImage: true, profileImageType: true } as const;
@@ -62,7 +62,7 @@ function RankingTable({
                 <td className="py-2">{i + 1}</td>
                 <td>
                   <div className="flex items-center gap-2">
-                    <Avatar user={r.user} size="sm" />
+                    <Avatar src={avatarSrc(r.user)} size="sm" />
                     <span>{r.user.name}</span>
                   </div>
                 </td>

@@ -1,5 +1,3 @@
-import { avatarSrc, type AvatarUser } from "@/lib/avatar";
-
 const SIZE_CLASSES = {
   sm: "h-8 w-8",
   md: "h-12 w-12",
@@ -7,18 +5,18 @@ const SIZE_CLASSES = {
 };
 
 export function Avatar({
-  user,
+  src,
   size = "sm",
   className = "",
 }: {
-  user: AvatarUser;
+  src: string;
   size?: keyof typeof SIZE_CLASSES;
   className?: string;
 }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={avatarSrc(user)}
+      src={src}
       alt=""
       className={`${SIZE_CLASSES[size]} shrink-0 rounded-full border border-gray-200 object-cover ${className}`}
     />

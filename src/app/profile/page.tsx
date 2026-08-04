@@ -57,7 +57,9 @@ export default async function ProfilePage({
     where: { id: { in: playerIds } },
     select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
   });
-  const playerById = new Map<string, TeamPlayer>(players.map((p) => [p.id, p]));
+  const playerById = new Map<string, TeamPlayer>(
+    players.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
+  );
 
   return (
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-12">

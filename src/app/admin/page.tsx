@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { formatPhone } from "@/lib/phone";
+import { avatarSrc } from "@/lib/avatar";
 import { RESULT_LABEL } from "@/lib/matchDisplay";
 import { TeamBadges, type TeamPlayer } from "@/components/TeamBadges";
 import { approveUserAction, deleteMatchAction, rejectUserAction } from "./actions";
@@ -40,7 +41,9 @@ export default async function AdminPage() {
     where: { id: { in: playerIds } },
     select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
   });
-  const playerById = new Map<string, TeamPlayer>(players.map((p) => [p.id, p]));
+  const playerById = new Map<string, TeamPlayer>(
+    players.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
+  );
 
   return (
     <main className="mx-auto max-w-3xl space-y-10 px-4 py-12">
