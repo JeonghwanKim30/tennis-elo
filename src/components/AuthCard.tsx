@@ -15,9 +15,9 @@ export function AuthCard({
             alt="테디비"
             className="h-20 w-20 rounded-full shadow-md"
           />
-          <h1 className="text-xl font-bold text-green-800">테디비</h1>
+          <h1 className="text-xl font-bold text-primary">테디비</h1>
         </div>
-        <div className="rounded-2xl border border-green-100 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-center text-lg font-semibold">{title}</h2>
           {children}
         </div>

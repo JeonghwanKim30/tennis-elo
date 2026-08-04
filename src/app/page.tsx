@@ -8,14 +8,14 @@ export default async function Home() {
     <main className="mx-auto flex max-w-2xl flex-col items-center gap-6 px-4 py-24 text-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/brand/teddi-icon.png" alt="테디비" className="h-24 w-24 rounded-full shadow-md" />
-      <h1 className="text-3xl font-bold text-green-800">테디비</h1>
+      <h1 className="text-3xl font-bold text-primary">테디비</h1>
       <p className="text-gray-500">
         동호회 경기 전적을 기록하고, 단식·복식 ELO 레이팅을 자동으로 계산합니다.
       </p>
       <div className="flex gap-3">
         {user ? (
           <>
-            <Link href="/matches" className="rounded bg-green-600 px-5 py-2 text-white">
+            <Link href="/matches" className="rounded bg-primary hover:bg-primary-hover px-5 py-2 text-white">
               경기 목록
             </Link>
             <Link href="/profile" className="rounded border px-5 py-2">
@@ -24,7 +24,7 @@ export default async function Home() {
           </>
         ) : (
           <>
-            <Link href="/signup" className="rounded bg-green-600 px-5 py-2 text-white">
+            <Link href="/signup" className="rounded bg-primary hover:bg-primary-hover px-5 py-2 text-white">
               회원가입
             </Link>
             <Link href="/login" className="rounded border px-5 py-2">

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { Barlow_Condensed } from "next/font/google";
 import { NavBar } from "@/components/NavBar";
 import "./globals.css";
 
@@ -8,6 +9,14 @@ const pretendard = localFont({
   variable: "--font-pretendard",
   display: "swap",
   weight: "45 920",
+});
+
+// 한글은 지원하지 않는 폰트라 ELO/점수 등 숫자 위주의 "스포츠 스탯" 표기에만 사용한다.
+const barlowCondensed = Barlow_Condensed({
+  variable: "--font-barlow-condensed",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -30,7 +39,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={`${pretendard.variable} h-full antialiased`}>
+    <html
+      lang="ko"
+      className={`${pretendard.variable} ${barlowCondensed.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col overflow-x-hidden">
         <NavBar />
         <div className="flex-1">{children}</div>

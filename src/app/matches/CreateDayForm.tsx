@@ -23,11 +23,11 @@ export function CreateDayForm() {
       <button
         type="submit"
         disabled={pending}
-        className="rounded bg-green-600 px-4 py-2 text-sm text-white disabled:opacity-50"
+        className="rounded bg-primary hover:bg-primary-hover px-4 py-2 text-sm text-white disabled:opacity-50"
       >
         {pending ? "생성 중..." : "+ 경기일 등록"}
       </button>
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state.error && <p className="text-sm text-destructive">{state.error}</p>}
     </form>
   );
 }

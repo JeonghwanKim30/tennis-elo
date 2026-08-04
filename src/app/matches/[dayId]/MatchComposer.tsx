@@ -118,7 +118,7 @@ export function MatchComposer({
               onDragStart={(e) => e.dataTransfer.setData("text/plain", p.id)}
               onClick={() => handleChipClick(p.id)}
               className={`rounded-lg p-1 ${
-                selectedChip === p.id ? "bg-lime-100 ring-2 ring-lime-400" : ""
+                selectedChip === p.id ? "bg-gold/20 ring-2 ring-gold" : ""
               }`}
             >
               <PlayerBadge user={p} name={p.name} />
@@ -140,11 +140,11 @@ export function MatchComposer({
           return formAction(formData);
         }}
       >
-        {state.error && <p className="mb-2 text-sm text-red-600">{state.error}</p>}
+        {state.error && <p className="mb-2 text-sm text-destructive">{state.error}</p>}
         <button
           type="submit"
           disabled={pending || !canSubmit}
-          className="w-full rounded bg-green-600 py-2 text-white disabled:opacity-50"
+          className="w-full rounded bg-primary hover:bg-primary-hover py-2 text-white disabled:opacity-50"
         >
           {pending ? "등록 중..." : "경기 추가"}
         </button>
@@ -211,7 +211,7 @@ function Slot({
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
       onClick={onClick}
-      className="flex h-20 w-16 shrink-0 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-center hover:border-green-400 sm:h-24 sm:w-20"
+      className="flex h-20 w-16 shrink-0 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-center hover:border-primary sm:h-24 sm:w-20"
     >
       {player ? (
         <PlayerBadge user={player} name={player.name} />

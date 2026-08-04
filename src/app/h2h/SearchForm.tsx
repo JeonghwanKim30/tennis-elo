@@ -13,7 +13,7 @@ export function SearchForm({ players, defaultValue }: { players: Player[]; defau
       <div className="w-56">
         <PlayerCombobox name="player" players={players} label="선수 검색" defaultValue={defaultValue} />
       </div>
-      <button type="submit" className="rounded bg-green-600 px-4 py-2 text-sm text-white">
+      <button type="submit" className="rounded bg-primary hover:bg-primary-hover px-4 py-2 text-sm text-white">
         조회
       </button>
     </form>

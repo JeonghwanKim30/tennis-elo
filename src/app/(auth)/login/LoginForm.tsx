@@ -38,17 +38,17 @@ export function LoginForm() {
           className="mt-1 w-full rounded border px-3 py-2"
         />
       </div>
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state.error && <p className="text-sm text-destructive">{state.error}</p>}
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded bg-green-600 py-2 text-white disabled:opacity-50"
+        className="w-full rounded bg-primary hover:bg-primary-hover py-2 text-white disabled:opacity-50"
       >
         {pending ? "로그인 중..." : "로그인"}
       </button>
       <p className="text-center text-sm text-gray-500">
         계정이 없나요?{" "}
-        <Link href="/signup" className="text-green-600 underline">
+        <Link href="/signup" className="text-primary underline">
           회원가입
         </Link>
       </p>

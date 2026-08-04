@@ -72,13 +72,13 @@ export default async function ProfilePage({
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded border p-4 text-center">
           <p className="text-sm text-gray-500">단식 ELO</p>
-          <p className="text-3xl font-bold text-green-700">
+          <p className="font-display text-4xl font-bold text-primary">
             {Math.round(singles?.rating ?? 1200)}
           </p>
         </div>
         <div className="rounded border p-4 text-center">
           <p className="text-sm text-gray-500">복식 ELO</p>
-          <p className="text-3xl font-bold text-green-700">
+          <p className="font-display text-4xl font-bold text-primary">
             {Math.round(doubles?.rating ?? 1200)}
           </p>
         </div>
@@ -193,7 +193,7 @@ function TabLink({ tab, current, label }: { tab: Tab; current: Tab; label: strin
     <Link
       href={href}
       className={`border-b-2 px-3 py-2 text-sm ${
-        isActive ? "border-green-600 font-medium text-green-600" : "border-transparent text-gray-500"
+        isActive ? "border-primary font-medium text-primary" : "border-transparent text-gray-500"
       }`}
     >
       {label}

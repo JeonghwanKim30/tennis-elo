@@ -68,11 +68,11 @@ export function AvatarUploader({ currentSrc }: { currentSrc: string }) {
         alt=""
         className="h-24 w-24 rounded-full border border-gray-200 object-cover"
       />
-      <label className="cursor-pointer text-sm text-green-700 underline">
+      <label className="cursor-pointer text-sm text-primary underline">
         {pending ? "업로드 중..." : "사진 변경"}
         <input type="file" accept="image/*" className="hidden" onChange={handleFile} />
       </label>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

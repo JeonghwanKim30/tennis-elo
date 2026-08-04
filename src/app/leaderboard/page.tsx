@@ -58,7 +58,7 @@ function RankingTable({
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.userId} className={`border-b ${i === 0 ? "bg-lime-50" : ""}`}>
+              <tr key={r.userId} className={`border-b ${i === 0 ? "bg-gold/10" : ""}`}>
                 <td className="py-2">{i + 1}</td>
                 <td>
                   <div className="flex items-center gap-2">
@@ -66,7 +66,9 @@ function RankingTable({
                     <span>{r.user.name}</span>
                   </div>
                 </td>
-                <td className="font-medium text-green-700">{Math.round(r.rating)}</td>
+                <td className="font-display text-base font-semibold text-primary">
+                  {Math.round(r.rating)}
+                </td>
                 <td className="text-gray-500">
                   {r.wins}승 {r.losses}패 {r.draws}무
                 </td>

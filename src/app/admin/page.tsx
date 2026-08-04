@@ -63,7 +63,7 @@ export default async function AdminPage() {
                 </div>
                 <div className="flex gap-2">
                   <form action={approveUserAction.bind(null, u.id)}>
-                    <button className="rounded bg-green-600 px-3 py-1 text-sm text-white">
+                    <button className="rounded bg-primary hover:bg-primary-hover px-3 py-1 text-sm text-white">
                       승인
                     </button>
                   </form>
@@ -147,7 +147,7 @@ export default async function AdminPage() {
                       </div>
                     </div>
                     <form action={deleteMatchAction.bind(null, m.id)}>
-                      <button className="rounded bg-red-100 px-3 py-1 text-sm text-red-700">
+                      <button className="rounded bg-destructive/10 px-3 py-1 text-sm text-destructive">
                         삭제
                       </button>
                     </form>

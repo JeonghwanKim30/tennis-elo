@@ -1,15 +1,49 @@
 @import "tailwindcss";
 
-/* 테니스 코트를 연상시키는 밝은 초록/노랑 톤. 시스템이 다크모드여도 항상 밝게 고정한다. */
+/* ui-ux-pro-max "Sports Team/Club" 팔레트 (Team red + championship gold).
+   시스템이 다크모드여도 항상 밝게 고정한다. */
 :root {
-  --background: #f6fbf3;
-  --foreground: #14361f;
+  --background: #fef2f2;
+  --foreground: #7f1d1d;
+  --primary: #dc2626;
+  --primary-foreground: #ffffff;
+  --primary-hover: #b91c1c;
+  --secondary: #ef4444;
+  --secondary-foreground: #ffffff;
+  --accent: #dc2626;
+  --accent-foreground: #ffffff;
+  --gold: #fbbf24;
+  --card: #ffffff;
+  --card-foreground: #7f1d1d;
+  --muted: #f0edf1;
+  --muted-foreground: #64748b;
+  --border: #fecaca;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --ring: #dc2626;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-gold: var(--gold);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-ring: var(--ring);
   --font-sans: var(--font-pretendard);
+  --font-display: var(--font-barlow-condensed);
 }
 
 body {

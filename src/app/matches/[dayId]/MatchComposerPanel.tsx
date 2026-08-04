@@ -21,7 +21,7 @@ export function MatchComposerPanel({
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-label={open ? "경기 추가 닫기" : "경기 추가 열기"}
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-green-600 text-lg leading-none text-white"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-primary hover:bg-primary-hover text-lg leading-none text-white"
         >
           {open ? "×" : "+"}
         </button>
