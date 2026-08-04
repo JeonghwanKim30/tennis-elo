@@ -4,7 +4,8 @@ import { requireUser } from "@/lib/session";
 import { formatPhone } from "@/lib/phone";
 import { RESULT_LABEL } from "@/lib/matchDisplay";
 import { avatarSrc } from "@/lib/avatar";
-import { TeamBadges, type TeamPlayer } from "@/components/TeamBadges";
+import { type TeamPlayer } from "@/components/TeamBadges";
+import { MatchupRow } from "@/components/MatchupRow";
 import { AvatarUploader } from "./AvatarUploader";
 
 type Tab = "all" | "singles" | "doubles";
@@ -138,17 +139,21 @@ export default async function ProfilePage({
                   {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
                   {m.matchDay.date.toISOString().slice(0, 10)}
                 </p>
-                <div className="flex items-center gap-3">
-                  <TeamBadges type={m.type} player1={teamAP1} player2={teamAP2} />
-                  <span className="text-xs text-gray-400">vs</span>
-                  <TeamBadges type={m.type} player1={teamBP1} player2={teamBP2} />
-                  <span className="ml-auto font-medium">
-                    {m.result ? RESULT_LABEL[m.result] : ""}
-                    {m.teamAScore !== null && m.teamBScore !== null
-                      ? ` (${m.teamAScore}:${m.teamBScore})`
-                      : ""}
-                  </span>
-                </div>
+                <MatchupRow
+                  type={m.type}
+                  teamA1={teamAP1}
+                  teamA2={teamAP2}
+                  teamB1={teamBP1}
+                  teamB2={teamBP2}
+                  center={
+                    <span className="font-medium">
+                      {m.result ? RESULT_LABEL[m.result] : ""}
+                      {m.teamAScore !== null && m.teamBScore !== null
+                        ? ` (${m.teamAScore}:${m.teamBScore})`
+                        : ""}
+                    </span>
+                  }
+                />
               </li>
             );
           })}

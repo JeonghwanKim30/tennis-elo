@@ -46,6 +46,12 @@
   --font-display: var(--font-barlow-condensed);
 }
 
+/* rem 기준 크기를 전체적으로 키운다 (Tailwind의 폰트/여백/아이콘 크기가 대부분 rem 기반이라
+   이 값 하나로 텍스트와 아바타 등 아이콘 크기가 함께 커진다). */
+html {
+  font-size: 113%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

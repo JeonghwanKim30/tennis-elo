@@ -4,7 +4,8 @@ import { getCurrentUser } from "@/lib/session";
 import { avatarSrc } from "@/lib/avatar";
 import { RESULT_LABEL } from "@/lib/matchDisplay";
 import { PlayerBadge } from "@/components/PlayerBadge";
-import { TeamBadges, type TeamPlayer } from "@/components/TeamBadges";
+import { type TeamPlayer } from "@/components/TeamBadges";
+import { MatchupRow } from "@/components/MatchupRow";
 import { ParticipantManager } from "./ParticipantManager";
 import { MatchComposerPanel } from "./MatchComposerPanel";
 import { removeParticipantAction } from "./actions";
@@ -95,11 +96,7 @@ export default async function MatchDayPage({
                   <p className="mb-2 text-sm text-gray-500">
                     {m.type === "SINGLES" ? "단식" : "복식"} · 점수 입력 대기 중
                   </p>
-                  <div className="flex items-center gap-3">
-                    <TeamBadges type={m.type} player1={a1} player2={a2} />
-                    <span className="text-xs text-gray-400">vs</span>
-                    <TeamBadges type={m.type} player1={b1} player2={b2} />
-                  </div>
+                  <MatchupRow type={m.type} teamA1={a1} teamA2={a2} teamB1={b1} teamB2={b2} />
                 </li>
               );
             })}
@@ -124,17 +121,21 @@ export default async function MatchDayPage({
                   <p className="mb-2 text-sm text-gray-500">
                     {m.type === "SINGLES" ? "단식" : "복식"}
                   </p>
-                  <div className="flex items-center gap-3">
-                    <TeamBadges type={m.type} player1={a1} player2={a2} />
-                    <span className="text-xs text-gray-400">vs</span>
-                    <TeamBadges type={m.type} player1={b1} player2={b2} />
-                    <span className="ml-auto font-medium">
-                      {m.result ? RESULT_LABEL[m.result] : ""}
-                      {m.teamAScore !== null && m.teamBScore !== null
-                        ? ` (${m.teamAScore}:${m.teamBScore})`
-                        : ""}
-                    </span>
-                  </div>
+                  <MatchupRow
+                    type={m.type}
+                    teamA1={a1}
+                    teamA2={a2}
+                    teamB1={b1}
+                    teamB2={b2}
+                    center={
+                      <span className="font-medium">
+                        {m.result ? RESULT_LABEL[m.result] : ""}
+                        {m.teamAScore !== null && m.teamBScore !== null
+                          ? ` (${m.teamAScore}:${m.teamBScore})`
+                          : ""}
+                      </span>
+                    }
+                  />
                 </li>
               );
             })}

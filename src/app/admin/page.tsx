@@ -3,7 +3,8 @@ import { requireAdmin } from "@/lib/session";
 import { formatPhone } from "@/lib/phone";
 import { avatarSrc } from "@/lib/avatar";
 import { RESULT_LABEL } from "@/lib/matchDisplay";
-import { TeamBadges, type TeamPlayer } from "@/components/TeamBadges";
+import { type TeamPlayer } from "@/components/TeamBadges";
+import { MatchupRow } from "@/components/MatchupRow";
 import { approveUserAction, deleteMatchAction, rejectUserAction } from "./actions";
 import { ScoreForm } from "./ScoreForm";
 
@@ -95,21 +96,13 @@ export default async function AdminPage() {
               const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
               if (!a1 || !b1) return null;
               return (
-                <li key={m.id} className="rounded border px-4 py-3">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="mb-2 text-sm text-gray-500">
-                        {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
-                        {m.matchDay.date.toISOString().slice(0, 10)}
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <TeamBadges type={m.type} player1={a1} player2={a2} />
-                        <span className="text-xs text-gray-400">vs</span>
-                        <TeamBadges type={m.type} player1={b1} player2={b2} />
-                      </div>
-                    </div>
-                    <ScoreForm matchId={m.id} />
-                  </div>
+                <li key={m.id} className="space-y-3 rounded border px-4 py-3">
+                  <p className="text-sm text-gray-500">
+                    {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
+                    {m.matchDay.date.toISOString().slice(0, 10)}
+                  </p>
+                  <MatchupRow type={m.type} teamA1={a1} teamA2={a2} teamB1={b1} teamB2={b2} />
+                  <ScoreForm matchId={m.id} />
                 </li>
               );
             })}
@@ -130,31 +123,31 @@ export default async function AdminPage() {
               const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
               if (!a1 || !b1) return null;
               return (
-                <li key={m.id} className="rounded border px-4 py-3">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="mb-2 text-sm text-gray-500">
-                        {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
-                        {m.matchDay.date.toISOString().slice(0, 10)}
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <TeamBadges type={m.type} player1={a1} player2={a2} />
-                        <span className="text-xs text-gray-400">vs</span>
-                        <TeamBadges type={m.type} player1={b1} player2={b2} />
-                        <span className="font-medium">
-                          {m.result ? RESULT_LABEL[m.result] : ""}
-                          {m.teamAScore !== null && m.teamBScore !== null
-                            ? ` (${m.teamAScore}:${m.teamBScore})`
-                            : ""}
-                        </span>
-                      </div>
-                    </div>
-                    <form action={deleteMatchAction.bind(null, m.id)}>
-                      <button className="btn-press rounded bg-destructive/10 px-3 py-1 text-sm text-destructive">
-                        삭제
-                      </button>
-                    </form>
-                  </div>
+                <li key={m.id} className="space-y-3 rounded border px-4 py-3">
+                  <p className="text-sm text-gray-500">
+                    {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
+                    {m.matchDay.date.toISOString().slice(0, 10)}
+                  </p>
+                  <MatchupRow
+                    type={m.type}
+                    teamA1={a1}
+                    teamA2={a2}
+                    teamB1={b1}
+                    teamB2={b2}
+                    center={
+                      <span className="font-medium">
+                        {m.result ? RESULT_LABEL[m.result] : ""}
+                        {m.teamAScore !== null && m.teamBScore !== null
+                          ? ` (${m.teamAScore}:${m.teamBScore})`
+                          : ""}
+                      </span>
+                    }
+                  />
+                  <form action={deleteMatchAction.bind(null, m.id)}>
+                    <button className="btn-press rounded bg-destructive/10 px-3 py-1 text-sm text-destructive">
+                      삭제
+                    </button>
+                  </form>
                 </li>
               );
             })}
