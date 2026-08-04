@@ -1,12 +1,21 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { avatarSrc } from "@/lib/avatar";
 import { CreateDayForm } from "./CreateDayForm";
+import { DayParticipantsPreview } from "./DayParticipantsPreview";
 
 export default async function MatchesPage() {
   const days = await prisma.matchDay.findMany({
     orderBy: { date: "desc" },
     include: {
-      _count: { select: { participants: true, matches: true } },
+      _count: { select: { matches: true } },
+      participants: {
+        include: {
+          user: {
+            select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
+          },
+        },
+      },
     },
   });
 
@@ -20,19 +29,27 @@ export default async function MatchesPage() {
         {days.length === 0 && (
           <p className="text-sm text-gray-500">등록된 경기일이 없습니다.</p>
         )}
-        {days.map((d) => (
-          <li key={d.id}>
-            <Link
-              href={`/matches/${d.id}`}
-              className="btn-press flex items-center justify-between rounded border px-4 py-3 hover:bg-muted"
-            >
-              <span className="font-medium">{d.date.toISOString().slice(0, 10)}</span>
-              <span className="text-sm text-gray-500">
-                참가자 {d._count.participants}명 · 경기 {d._count.matches}건
-              </span>
-            </Link>
-          </li>
-        ))}
+        {days.map((d) => {
+          const participants = d.participants.map((p) => ({
+            id: p.user.id,
+            name: p.user.name,
+            avatarSrc: avatarSrc(p.user),
+          }));
+          return (
+            <li key={d.id}>
+              <Link
+                href={`/matches/${d.id}`}
+                className="btn-press block space-y-2 rounded border px-4 py-3 hover:bg-muted"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{d.date.toISOString().slice(0, 10)}</span>
+                  <span className="text-sm text-gray-500">경기 {d._count.matches}건</span>
+                </div>
+                <DayParticipantsPreview participants={participants} />
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </main>
   );
