@@ -32,13 +32,13 @@ export function ScoreForm({ matchId }: { matchId: string }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-primary hover:bg-primary-hover px-3 py-1 text-sm text-white disabled:opacity-50"
+          className="btn-press rounded bg-primary hover:bg-primary-hover px-3 py-1 text-sm text-white disabled:opacity-50"
         >
           완료 처리
         </button>
       </form>
       <form action={deleteMatchAction.bind(null, matchId)}>
-        <button className="rounded bg-gray-200 px-3 py-1 text-sm">취소</button>
+        <button className="btn-press rounded bg-gray-200 px-3 py-1 text-sm">취소</button>
       </form>
       {state.error && <p className="text-xs text-destructive">{state.error}</p>}
     </div>

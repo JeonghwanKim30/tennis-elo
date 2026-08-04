@@ -15,24 +15,24 @@ export default async function Home() {
       <div className="flex gap-3">
         {user ? (
           <>
-            <Link href="/matches" className="rounded bg-primary hover:bg-primary-hover px-5 py-2 text-white">
+            <Link href="/matches" className="btn-press rounded bg-primary hover:bg-primary-hover px-5 py-2 text-white">
               경기 목록
             </Link>
-            <Link href="/profile" className="rounded border px-5 py-2">
+            <Link href="/profile" className="btn-press rounded border px-5 py-2 hover:bg-muted">
               내 프로필
             </Link>
           </>
         ) : (
           <>
-            <Link href="/signup" className="rounded bg-primary hover:bg-primary-hover px-5 py-2 text-white">
+            <Link href="/signup" className="btn-press rounded bg-primary hover:bg-primary-hover px-5 py-2 text-white">
               회원가입
             </Link>
-            <Link href="/login" className="rounded border px-5 py-2">
+            <Link href="/login" className="btn-press rounded border px-5 py-2 hover:bg-muted">
               로그인
             </Link>
           </>
         )}
-        <Link href="/leaderboard" className="rounded border px-5 py-2">
+        <Link href="/leaderboard" className="btn-press rounded border px-5 py-2 hover:bg-muted">
           리더보드
         </Link>
       </div>

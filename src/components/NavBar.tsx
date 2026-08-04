@@ -15,21 +15,39 @@ export async function NavBar() {
           테디비
         </Link>
         <NavMenu>
-          <Link href="/matches">경기 목록</Link>
-          <Link href="/leaderboard">리더보드</Link>
-          <Link href="/h2h">상대전적</Link>
-          {user && <Link href="/profile">내 프로필</Link>}
-          {user?.role === "ADMIN" && <Link href="/admin">관리자</Link>}
+          <Link href="/matches" className="btn-press">
+            경기 목록
+          </Link>
+          <Link href="/leaderboard" className="btn-press">
+            리더보드
+          </Link>
+          <Link href="/h2h" className="btn-press">
+            상대전적
+          </Link>
+          {user && (
+            <Link href="/profile" className="btn-press">
+              내 프로필
+            </Link>
+          )}
+          {user?.role === "ADMIN" && (
+            <Link href="/admin" className="btn-press">
+              관리자
+            </Link>
+          )}
           {user ? (
             <form action={logoutAction}>
-              <button type="submit" className="text-gray-500 underline">
+              <button type="submit" className="btn-press text-gray-500 underline">
                 로그아웃
               </button>
             </form>
           ) : (
             <>
-              <Link href="/login">로그인</Link>
-              <Link href="/signup">회원가입</Link>
+              <Link href="/login" className="btn-press">
+                로그인
+              </Link>
+              <Link href="/signup" className="btn-press">
+                회원가입
+              </Link>
             </>
           )}
         </NavMenu>

@@ -24,7 +24,7 @@ export default async function MatchesPage() {
           <li key={d.id}>
             <Link
               href={`/matches/${d.id}`}
-              className="flex items-center justify-between rounded border px-4 py-3 hover:bg-muted"
+              className="btn-press flex items-center justify-between rounded border px-4 py-3 hover:bg-muted"
             >
               <span className="font-medium">{d.date.toISOString().slice(0, 10)}</span>
               <span className="text-sm text-gray-500">

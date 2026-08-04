@@ -65,3 +65,13 @@ input::placeholder,
 textarea::placeholder {
   color: #9ca3af;
 }
+
+/* 버튼/클릭 가능한 링크에 눌리는 느낌을 준다. 모바일에서는 hover가 잘 안 먹으니
+   active(누르는 순간)를 기준으로 살짝 줄어들게 한다. */
+.btn-press {
+  transition: transform 100ms ease, opacity 100ms ease, filter 100ms ease;
+}
+.btn-press:active {
+  transform: scale(0.96);
+  filter: brightness(0.95);
+}

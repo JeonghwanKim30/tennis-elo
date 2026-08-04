@@ -42,13 +42,13 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded bg-primary hover:bg-primary-hover py-2 text-white disabled:opacity-50"
+        className="btn-press w-full rounded bg-primary hover:bg-primary-hover py-2 text-white disabled:opacity-50"
       >
         {pending ? "로그인 중..." : "로그인"}
       </button>
       <p className="text-center text-sm text-gray-500">
         계정이 없나요?{" "}
-        <Link href="/signup" className="text-primary underline">
+        <Link href="/signup" className="btn-press text-primary underline">
           회원가입
         </Link>
       </p>

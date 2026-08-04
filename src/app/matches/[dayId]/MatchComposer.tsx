@@ -117,7 +117,7 @@ export function MatchComposer({
               draggable
               onDragStart={(e) => e.dataTransfer.setData("text/plain", p.id)}
               onClick={() => handleChipClick(p.id)}
-              className={`rounded-lg p-1 ${
+              className={`btn-press rounded-lg p-1 ${
                 selectedChip === p.id ? "bg-gold/20 ring-2 ring-gold" : ""
               }`}
             >
@@ -144,7 +144,7 @@ export function MatchComposer({
         <button
           type="submit"
           disabled={pending || !canSubmit}
-          className="w-full rounded bg-primary hover:bg-primary-hover py-2 text-white disabled:opacity-50"
+          className="btn-press w-full rounded bg-primary hover:bg-primary-hover py-2 text-white disabled:opacity-50"
         >
           {pending ? "등록 중..." : "경기 추가"}
         </button>
@@ -211,7 +211,7 @@ function Slot({
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
       onClick={onClick}
-      className="flex h-20 w-16 shrink-0 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-center hover:border-primary sm:h-24 sm:w-20"
+      className="btn-press flex h-20 w-16 shrink-0 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-center hover:border-primary sm:h-24 sm:w-20"
     >
       {player ? (
         <PlayerBadge avatarSrc={player.avatarSrc} name={player.name} />

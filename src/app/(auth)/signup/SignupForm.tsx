@@ -16,7 +16,7 @@ export function SignupForm() {
         <p className="text-sm text-gray-500">
           관리자 승인 후 로그인할 수 있습니다. 승인까지 시간이 걸릴 수 있습니다.
         </p>
-        <Link href="/login" className="inline-block text-primary underline">
+        <Link href="/login" className="btn-press inline-block text-primary underline">
           로그인 페이지로 이동
         </Link>
       </div>
@@ -71,13 +71,13 @@ export function SignupForm() {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded bg-primary hover:bg-primary-hover py-2 text-white disabled:opacity-50"
+        className="btn-press w-full rounded bg-primary hover:bg-primary-hover py-2 text-white disabled:opacity-50"
       >
         {pending ? "제출 중..." : "가입 신청"}
       </button>
       <p className="text-center text-sm text-gray-500">
         이미 계정이 있나요?{" "}
-        <Link href="/login" className="text-primary underline">
+        <Link href="/login" className="btn-press text-primary underline">
           로그인
         </Link>
       </p>

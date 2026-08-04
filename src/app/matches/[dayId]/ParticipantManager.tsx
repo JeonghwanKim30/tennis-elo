@@ -18,7 +18,7 @@ export function ParticipantManager({ dayId, players }: { dayId: string; players:
       <div className="w-56">
         <PlayerCombobox name="userId" players={players} label="참가자 추가" />
       </div>
-      <button type="submit" className="rounded bg-primary hover:bg-primary-hover px-3 py-2 text-sm text-white">
+      <button type="submit" className="btn-press rounded bg-primary hover:bg-primary-hover px-3 py-2 text-sm text-white">
         추가
       </button>
     </form>

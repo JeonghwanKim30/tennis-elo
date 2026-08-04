@@ -11,7 +11,7 @@ export function NavMenu({ children }: { children: React.ReactNode }) {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label={open ? "메뉴 닫기" : "메뉴 열기"}
-        className="flex h-9 w-9 items-center justify-center rounded border text-lg leading-none sm:hidden"
+        className="btn-press flex h-9 w-9 items-center justify-center rounded border text-lg leading-none sm:hidden"
       >
         {open ? "×" : "☰"}
       </button>

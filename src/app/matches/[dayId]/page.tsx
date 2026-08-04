@@ -67,7 +67,7 @@ export default async function MatchDayPage({
               <PlayerBadge avatarSrc={p.avatarSrc} name={p.name} />
               {user && (
                 <form action={removeParticipantAction.bind(null, day.id, p.id)}>
-                  <button className="mt-1 text-[10px] text-destructive underline">제거</button>
+                  <button className="btn-press mt-1 text-[10px] text-destructive underline">제거</button>
                 </form>
               )}
             </div>

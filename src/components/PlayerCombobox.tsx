@@ -66,7 +66,7 @@ export function PlayerCombobox({
                   setQuery(p.name);
                   setOpen(false);
                 }}
-                className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                className="btn-press block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
               >
                 {p.name}
               </button>
