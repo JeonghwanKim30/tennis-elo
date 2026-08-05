@@ -27,7 +27,7 @@ export default async function LeaderboardPage() {
   );
 }
 
-const RANK_BADGE = ["bg-secondary text-secondary-foreground", "bg-gray-200 text-gray-600", "bg-amber-200 text-amber-800"];
+const RANK_BADGE = ["bg-gold text-accent-foreground", "bg-gray-200 text-gray-600", "bg-amber-200 text-amber-800"];
 
 function RankingTable({
   title,

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
 import { logoutAction } from "@/app/actions/auth";
 import { NavTabs, type NavTabItem } from "@/components/NavTabs";
+import { TeddiWordmark } from "@/components/TeddiMark";
 import {
   AdminIcon,
   H2HIcon,
@@ -36,10 +37,8 @@ export async function NavBar() {
     <header className="border-b border-border bg-card/80 backdrop-blur">
       <div className="mx-auto max-w-4xl space-y-3 px-4 py-3">
         <div className="flex items-center justify-between gap-3">
-          <Link href="/" className="btn-press flex items-center gap-2 text-lg font-bold">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/teddi-logo.png" alt="" className="h-8 w-8 rounded-full object-cover" />
-            테디베어
+          <Link href="/" className="btn-press">
+            <TeddiWordmark size="sm" />
           </Link>
           {user && (
             <form action={logoutAction}>

@@ -4,8 +4,8 @@
   "description": "동호회 테니스 전적 및 ELO 레이팅 관리",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fef2f2",
-  "theme_color": "#dc2626",
+  "background_color": "#f5fbf7",
+  "theme_color": "#2fbf71",
   "icons": [
     {
       "src": "/brand/teddi-icon-192.png",

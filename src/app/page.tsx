@@ -1,18 +1,15 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
+import { TennisBearHero } from "@/components/TennisBearHero";
+import { TeddiWordmark } from "@/components/TeddiMark";
 
 export default async function Home() {
   const user = await getCurrentUser();
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col items-center gap-6 px-4 py-24 text-center">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/brand/teddi-logo.png"
-        alt="테디베어"
-        className="h-24 w-24 rounded-full object-cover shadow-lg shadow-primary/20"
-      />
-      <h1 className="text-3xl font-bold text-primary">테디베어</h1>
+    <main className="mx-auto flex max-w-2xl flex-col items-center gap-4 px-4 py-16 text-center">
+      <TennisBearHero className="h-56 w-56 sm:h-64 sm:w-64" />
+      <TeddiWordmark size="md" />
       <p className="text-muted-foreground">
         동호회 경기 전적을 기록하고, 단식·복식 ELO 레이팅을 자동으로 계산합니다.
       </p>
