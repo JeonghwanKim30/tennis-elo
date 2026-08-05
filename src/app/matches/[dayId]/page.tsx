@@ -212,6 +212,8 @@ export default async function MatchDayPage({
                     teamA2={a2}
                     teamB1={b1}
                     teamB2={b2}
+                    teamAEloChange={m.teamAEloChange}
+                    teamBEloChange={m.teamBEloChange}
                     center={
                       <span className="font-medium">
                         {m.result ? RESULT_LABEL[m.result] : ""}

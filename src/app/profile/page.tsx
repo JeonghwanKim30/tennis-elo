@@ -145,6 +145,8 @@ export default async function ProfilePage({
                   teamA2={teamAP2}
                   teamB1={teamBP1}
                   teamB2={teamBP2}
+                  teamAEloChange={m.teamAEloChange}
+                  teamBEloChange={m.teamBEloChange}
                   center={
                     <span className="font-medium">
                       {m.result ? RESULT_LABEL[m.result] : ""}
