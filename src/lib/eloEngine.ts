@@ -10,11 +10,14 @@ interface MatchPlayers {
   teamAPlayer2: string | null;
   teamBPlayer1: string;
   teamBPlayer2: string | null;
+  teamAScore: number;
+  teamBScore: number;
 }
 
 /**
- * 한 경기의 결과를 EloRating/EloHistory에 반영한다.
- * 새 경기 승인, 그리고 삭제 후 전체 재계산(replay) 양쪽에서 공용으로 사용한다.
+ * 한 경기의 결과를 EloRating/EloHistory에 반영하고, 경기 자체(Match)에도
+ * 팀별 ELO 변동량을 기록한다. 새 경기 승인, 그리고 삭제 후 전체
+ * 재계산(replay) 양쪽에서 공용으로 사용한다.
  */
 export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: MatchResult) {
   const teamAIds = [match.teamAPlayer1, match.teamAPlayer2].filter(
@@ -34,6 +37,10 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
     where: { userId: { in: allIds }, type: match.type },
   });
   const ratingByUser = new Map(ratingRows.map((r) => [r.userId, r]));
+  const gamesPlayed = (userId: string) => {
+    const r = ratingByUser.get(userId)!;
+    return r.wins + r.losses + r.draws;
+  };
 
   const outcomeForTeamA: MatchOutcome =
     result === "TEAM_A_WIN" ? "WIN" : result === "TEAM_B_WIN" ? "LOSS" : "DRAW";
@@ -41,23 +48,43 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
     result === "TEAM_A_WIN" ? "LOSS" : result === "TEAM_B_WIN" ? "WIN" : "DRAW";
 
   let newRatings: Map<string, number>;
+  let teamAEloChange: number;
+  let teamBEloChange: number;
 
   if (match.type === "SINGLES") {
     const a = ratingByUser.get(teamAIds[0])!;
     const b = ratingByUser.get(teamBIds[0])!;
-    const eloResult = calculateSinglesElo(a.rating, b.rating, outcomeForTeamA);
+    const eloResult = calculateSinglesElo(
+      a.rating,
+      gamesPlayed(teamAIds[0]),
+      b.rating,
+      gamesPlayed(teamBIds[0]),
+      match.teamAScore,
+      match.teamBScore,
+      outcomeForTeamA
+    );
     newRatings = new Map([
       [teamAIds[0], eloResult.ratingA],
       [teamBIds[0], eloResult.ratingB],
     ]);
+    teamAEloChange = eloResult.deltaA;
+    teamBEloChange = eloResult.deltaB;
   } else {
     const a1 = ratingByUser.get(teamAIds[0])!;
     const a2 = ratingByUser.get(teamAIds[1])!;
     const b1 = ratingByUser.get(teamBIds[0])!;
     const b2 = ratingByUser.get(teamBIds[1])!;
     const eloResult = calculateDoublesElo(
-      [a1.rating, a2.rating],
-      [b1.rating, b2.rating],
+      [
+        { rating: a1.rating, gamesPlayed: gamesPlayed(teamAIds[0]) },
+        { rating: a2.rating, gamesPlayed: gamesPlayed(teamAIds[1]) },
+      ],
+      [
+        { rating: b1.rating, gamesPlayed: gamesPlayed(teamBIds[0]) },
+        { rating: b2.rating, gamesPlayed: gamesPlayed(teamBIds[1]) },
+      ],
+      match.teamAScore,
+      match.teamBScore,
       outcomeForTeamA
     );
     newRatings = new Map([
@@ -66,6 +93,8 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
       [teamBIds[0], eloResult.teamB[0]],
       [teamBIds[1], eloResult.teamB[1]],
     ]);
+    teamAEloChange = eloResult.deltaA;
+    teamBEloChange = eloResult.deltaB;
   }
 
   for (const userId of allIds) {
@@ -94,6 +123,11 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
       },
     });
   }
+
+  await tx.match.update({
+    where: { id: match.id },
+    data: { teamAEloChange, teamBEloChange },
+  });
 }
 
 /**
@@ -113,6 +147,10 @@ export async function recalculateAllElo(tx: Tx) {
   });
 
   for (const match of remainingMatches) {
-    await applyEloForMatch(tx, match, match.result!);
+    await applyEloForMatch(
+      tx,
+      { ...match, teamAScore: match.teamAScore!, teamBScore: match.teamBScore! },
+      match.result!
+    );
   }
 }

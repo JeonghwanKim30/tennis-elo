@@ -67,7 +67,8 @@ export async function enterMatchScoreAction(
     const match = await tx.match.findUniqueOrThrow({ where: { id: matchId } });
     if (match.status !== "PENDING") return match.matchDayId;
 
-    await applyEloForMatch(tx, match, result);
+    // match는 아직 점수가 저장되기 전(PENDING)이므로 방금 입력받은 점수를 함께 넘겨준다.
+    await applyEloForMatch(tx, { ...match, teamAScore, teamBScore }, result);
 
     const maxSeq = await tx.match.aggregate({ _max: { approvalSeq: true } });
     const nextSeq = (maxSeq._max.approvalSeq ?? 0) + 1;

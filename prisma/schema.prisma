@@ -99,10 +99,10 @@ model MatchDayParticipant {
 model EloRating {
   userId String
   type   MatchType
-  rating Float @default(1200)
-  wins   Int   @default(0)
-  losses Int   @default(0)
-  draws  Int   @default(0)
+  rating Float     @default(1200)
+  wins   Int       @default(0)
+  losses Int       @default(0)
+  draws  Int       @default(0)
 
   user User @relation(fields: [userId], references: [id])
 
@@ -112,22 +112,24 @@ model EloRating {
 // 복식의 경우 각 팀의 player1은 포핸드, player2는 백핸드 포지션을 의미한다.
 // result/score는 admin이 점수를 입력해 경기를 완료 처리하기 전까지는 비어있다 (status=PENDING).
 model Match {
-  id           String      @id @default(cuid())
-  matchDayId   String
-  type         MatchType
-  teamAPlayer1 String
-  teamAPlayer2 String?
-  teamBPlayer1 String
-  teamBPlayer2 String?
-  result       MatchResult?
-  teamAScore   Int?
-  teamBScore   Int?
-  status       MatchStatus @default(PENDING)
-  submittedBy  String
-  submittedAt  DateTime    @default(now())
-  approvedBy   String?
-  approvedAt   DateTime?
-  approvalSeq  Int?        @unique
+  id             String       @id @default(cuid())
+  matchDayId     String
+  type           MatchType
+  teamAPlayer1   String
+  teamAPlayer2   String?
+  teamBPlayer1   String
+  teamBPlayer2   String?
+  result         MatchResult?
+  teamAScore     Int?
+  teamBScore     Int?
+  teamAEloChange Int?
+  teamBEloChange Int?
+  status         MatchStatus  @default(PENDING)
+  submittedBy    String
+  submittedAt    DateTime     @default(now())
+  approvedBy     String?
+  approvedAt     DateTime?
+  approvalSeq    Int?         @unique
 
   matchDay   MatchDay     @relation(fields: [matchDayId], references: [id])
   submitter  User         @relation("SubmittedMatches", fields: [submittedBy], references: [id])
