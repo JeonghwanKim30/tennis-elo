@@ -1,8 +1,23 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Avatar } from "@/components/Avatar";
 import { avatarSrc, type AvatarUser } from "@/lib/avatar";
 
-export default async function LeaderboardPage() {
+type GenderFilter = "ALL" | "FEMALE" | "MALE";
+const GENDER_TABS: { key: GenderFilter; label: string }[] = [
+  { key: "ALL", label: "전체" },
+  { key: "FEMALE", label: "여성" },
+  { key: "MALE", label: "남성" },
+];
+
+export default async function LeaderboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ gender?: string }>;
+}) {
+  const { gender } = await searchParams;
+  const genderFilter: GenderFilter = gender === "FEMALE" || gender === "MALE" ? gender : "ALL";
+
   const userSelect = { name: true, gender: true, profileImage: true, profileImageType: true } as const;
 
   const [singles, doubles] = await Promise.all([
@@ -18,11 +33,29 @@ export default async function LeaderboardPage() {
     }),
   ]);
 
+  const filterRows = <T extends { user: { gender: string } }>(rows: T[]) =>
+    genderFilter === "ALL" ? rows : rows.filter((r) => r.user.gender === genderFilter);
+
   return (
     <main className="mx-auto max-w-3xl space-y-10 px-4 py-12">
       <h1 className="text-2xl font-bold">리더보드</h1>
-      <RankingTable title="단식 랭킹" rows={singles} />
-      <RankingTable title="복식 랭킹" rows={doubles} />
+
+      <div className="flex justify-center gap-2 sm:justify-start">
+        {GENDER_TABS.map(({ key, label }) => (
+          <Link
+            key={key}
+            href={key === "ALL" ? "/leaderboard" : `/leaderboard?gender=${key}`}
+            className={`btn-press touch-target rounded-full px-4 py-2 text-sm font-medium ${
+              genderFilter === key ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
+            }`}
+          >
+            {label}
+          </Link>
+        ))}
+      </div>
+
+      <RankingTable title="단식 랭킹" rows={filterRows(singles)} />
+      <RankingTable title="복식 랭킹" rows={filterRows(doubles)} />
     </main>
   );
 }

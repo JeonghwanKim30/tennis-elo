@@ -173,7 +173,7 @@ function TeamSlots({
   return (
     <fieldset className="rounded-2xl border border-border p-3">
       <legend className="px-1 text-sm font-medium">{label}</legend>
-      <div className="mt-2 flex gap-3">
+      <div className="mt-2 flex justify-center gap-3">
         <Slot
           label={type === "DOUBLES" ? "포핸드" : "선수"}
           player={player1Id ? playerById.get(player1Id) ?? null : null}

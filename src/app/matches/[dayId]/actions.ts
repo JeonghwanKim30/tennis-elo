@@ -34,6 +34,23 @@ export async function removeParticipantAction(
   revalidatePath(`/matches/${dayId}`);
 }
 
+// 참가자 본인 또는 관리자만 참여 상태(참여/불참/미응답)를 바꿀 수 있다.
+export async function setParticipationStatusAction(
+  dayId: string,
+  userId: string,
+  status: "PENDING" | "ATTENDING" | "NOT_ATTENDING",
+  _formData: FormData
+) {
+  const user = await requireUser();
+  if (user.id !== userId && user.role !== "ADMIN") return;
+
+  await prisma.matchDayParticipant
+    .update({ where: { matchDayId_userId: { matchDayId: dayId, userId } }, data: { status } })
+    .catch(() => {});
+
+  revalidatePath(`/matches/${dayId}`);
+}
+
 export interface CreateMatchState {
   error?: string;
 }

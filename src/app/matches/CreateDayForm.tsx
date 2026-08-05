@@ -10,13 +10,31 @@ export function CreateDayForm() {
 
   return (
     <form action={formAction} className="surface-card flex flex-wrap items-end gap-3 p-4">
-      <div className="min-w-[10rem] flex-1">
+      <div className="min-w-[9rem] flex-1">
         <label className="block text-xs font-medium text-muted-foreground">날짜</label>
         <input
           name="date"
           type="date"
           required
           defaultValue={new Date().toISOString().slice(0, 10)}
+          className="mt-1 w-full rounded-xl border border-border px-3 py-2 text-sm"
+        />
+      </div>
+      <div className="min-w-[7rem] flex-1">
+        <label className="block text-xs font-medium text-muted-foreground">시간</label>
+        <input
+          name="time"
+          type="time"
+          className="mt-1 w-full rounded-xl border border-border px-3 py-2 text-sm"
+        />
+      </div>
+      <div className="min-w-[9rem] flex-[2]">
+        <label className="block text-xs font-medium text-muted-foreground">장소</label>
+        <input
+          name="location"
+          type="text"
+          placeholder="예: 올림픽공원 테니스장"
+          maxLength={100}
           className="mt-1 w-full rounded-xl border border-border px-3 py-2 text-sm"
         />
       </div>

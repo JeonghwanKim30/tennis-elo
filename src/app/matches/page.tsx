@@ -1,10 +1,18 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { avatarSrc } from "@/lib/avatar";
+import { getCurrentUser } from "@/lib/session";
 import { CreateDayForm } from "./CreateDayForm";
 import { DayParticipantsPreview } from "./DayParticipantsPreview";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+type Scope = "all" | "upcoming" | "past";
+const SCOPE_TABS: { key: Scope; label: string }[] = [
+  { key: "all", label: "전체 경기" },
+  { key: "upcoming", label: "다가오는 경기" },
+  { key: "past", label: "지난 경기" },
+];
 
 // "오늘"과 날짜 차이가 작을수록 먼저 보이도록(과거·미래 상관없이 오늘과
 // 가까운 경기일이 위로) 정렬 기준을 명확히 보여주는 D-day 라벨.
@@ -13,7 +21,25 @@ function dDayLabel(diffDays: number): string {
   return diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
 }
 
-export default async function MatchesPage() {
+function buildHref(scope: Scope, mine: boolean) {
+  const params = new URLSearchParams();
+  if (scope !== "upcoming") params.set("scope", scope);
+  if (mine) params.set("mine", "1");
+  const qs = params.toString();
+  return qs ? `/matches?${qs}` : "/matches";
+}
+
+export default async function MatchesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ scope?: string; mine?: string }>;
+}) {
+  const { scope: rawScope, mine: rawMine } = await searchParams;
+  const scope: Scope = rawScope === "all" || rawScope === "past" ? rawScope : "upcoming";
+  const mineOnly = rawMine === "1";
+
+  const user = await getCurrentUser();
+
   const days = await prisma.matchDay.findMany({
     orderBy: { date: "desc" },
     include: {
@@ -29,9 +55,18 @@ export default async function MatchesPage() {
   });
 
   const today = new Date(new Date().toISOString().slice(0, 10));
-  const daysWithDiff = days
-    .map((d) => ({ ...d, diffDays: Math.round((d.date.getTime() - today.getTime()) / DAY_MS) }))
-    .sort((a, b) => Math.abs(a.diffDays) - Math.abs(b.diffDays) || a.diffDays - b.diffDays);
+  let daysWithDiff = days.map((d) => ({
+    ...d,
+    diffDays: Math.round((d.date.getTime() - today.getTime()) / DAY_MS),
+  }));
+
+  if (scope === "upcoming") daysWithDiff = daysWithDiff.filter((d) => d.diffDays >= 0);
+  if (scope === "past") daysWithDiff = daysWithDiff.filter((d) => d.diffDays < 0);
+  if (mineOnly && user) {
+    daysWithDiff = daysWithDiff.filter((d) => d.participants.some((p) => p.userId === user.id));
+  }
+
+  daysWithDiff.sort((a, b) => Math.abs(a.diffDays) - Math.abs(b.diffDays) || a.diffDays - b.diffDays);
 
   return (
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-12">
@@ -39,11 +74,42 @@ export default async function MatchesPage() {
 
       <CreateDayForm />
 
-      <p className="text-xs text-muted-foreground">오늘과 날짜 차이가 가까운 경기일 순으로 정렬됩니다.</p>
+      <div className="space-y-3">
+        <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
+          {SCOPE_TABS.map(({ key, label }) => (
+            <Link
+              key={key}
+              href={buildHref(key, mineOnly)}
+              aria-current={scope === key ? "page" : undefined}
+              className={`btn-press touch-target rounded-full px-4 py-2 text-sm font-medium ${
+                scope === key ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+        {user && (
+          <div className="flex justify-center sm:justify-start">
+            <Link
+              href={buildHref(scope, !mineOnly)}
+              aria-pressed={mineOnly}
+              className={`btn-press touch-target rounded-full px-4 py-2 text-xs font-medium ${
+                mineOnly ? "bg-accent/40 text-accent-foreground" : "bg-muted text-foreground/70"
+              }`}
+            >
+              {mineOnly ? "✓ 내가 참여하는 경기만" : "내가 참여하는 경기만 보기"}
+            </Link>
+          </div>
+        )}
+        <p className="text-center text-xs text-muted-foreground sm:text-left">
+          오늘과 날짜 차이가 가까운 경기일 순으로 정렬됩니다.
+        </p>
+      </div>
 
       <ul className="space-y-3">
         {daysWithDiff.length === 0 && (
-          <p className="text-sm text-muted-foreground">등록된 경기일이 없습니다.</p>
+          <p className="text-sm text-muted-foreground">해당하는 경기일이 없습니다.</p>
         )}
         {daysWithDiff.map((d) => {
           const participants = d.participants.map((p) => ({
@@ -58,11 +124,16 @@ export default async function MatchesPage() {
                 className="btn-press surface-card block space-y-2.5 px-5 py-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <span className="truncate font-medium">{d.date.toISOString().slice(0, 10)}</span>
                     <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                       {dDayLabel(d.diffDays)}
                     </span>
+                    {(d.time || d.location) && (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {[d.time, d.location].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
                   </div>
                   <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                     경기 {d._count.matches}건

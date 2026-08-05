@@ -23,11 +23,18 @@ export async function createMatchDayAction(
     return { error: "날짜가 올바르지 않습니다." };
   }
 
+  const timeStr = formData.get("time");
+  const time = typeof timeStr === "string" && timeStr.trim() ? timeStr.trim() : null;
+  const locationStr = formData.get("location");
+  const location = typeof locationStr === "string" && locationStr.trim() ? locationStr.trim() : null;
+
   const existing = await prisma.matchDay.findUnique({ where: { date } });
   if (existing) {
     redirect(`/matches/${existing.id}`);
   }
 
-  const day = await prisma.matchDay.create({ data: { date, createdBy: user.id } });
+  const day = await prisma.matchDay.create({
+    data: { date, time, location, createdBy: user.id },
+  });
   redirect(`/matches/${day.id}`);
 }

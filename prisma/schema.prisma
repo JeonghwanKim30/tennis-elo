@@ -45,6 +45,12 @@ enum MatchStatus {
   REJECTED
 }
 
+enum ParticipationStatus {
+  PENDING
+  ATTENDING
+  NOT_ATTENDING
+}
+
 model User {
   id               String     @id @default(cuid())
   name             String
@@ -69,6 +75,8 @@ model User {
 model MatchDay {
   id        String   @id @default(cuid())
   date      DateTime @unique
+  time      String?
+  location  String?
   createdBy String
   createdAt DateTime @default(now())
 
@@ -80,6 +88,7 @@ model MatchDay {
 model MatchDayParticipant {
   matchDayId String
   userId     String
+  status     ParticipationStatus @default(PENDING)
 
   matchDay MatchDay @relation(fields: [matchDayId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id])
