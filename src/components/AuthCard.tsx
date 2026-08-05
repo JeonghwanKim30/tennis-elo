@@ -13,11 +13,11 @@ export function AuthCard({
           <img
             src="/brand/teddi-logo.png"
             alt="테디베어"
-            className="h-20 w-20 rounded-full object-cover shadow-md"
+            className="h-20 w-20 rounded-full object-cover shadow-lg shadow-primary/20"
           />
-          <h1 className="text-xl font-bold text-primary">테디베어</h1>
+          <h1 className="text-2xl font-bold text-primary">테디베어</h1>
         </div>
-        <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+        <div className="surface-card p-6">
           <h2 className="mb-4 text-center text-lg font-semibold">{title}</h2>
           {children}
         </div>

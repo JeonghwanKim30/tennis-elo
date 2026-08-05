@@ -68,7 +68,7 @@ export function MatchComposer({
   const canSubmit = requiredSlots.every((s) => slots[s]);
 
   return (
-    <div className="space-y-4 rounded border p-4">
+    <div className="surface-card space-y-4 p-4">
       <div>
         <label className="block text-sm font-medium">경기 종류</label>
         <select
@@ -77,7 +77,7 @@ export function MatchComposer({
             setType(e.target.value as MatchType);
             setSlots(EMPTY_SLOTS);
           }}
-          className="mt-1 rounded border px-3 py-2 text-sm"
+          className="mt-1 rounded-xl border border-border px-3 py-2 text-sm"
         >
           <option value="SINGLES">단식</option>
           <option value="DOUBLES">복식</option>
@@ -106,7 +106,7 @@ export function MatchComposer({
       </div>
 
       <div>
-        <p className="mb-2 text-xs text-gray-500">
+        <p className="mb-2 text-xs text-muted-foreground">
           참가자를 슬롯으로 드래그하거나, 선택한 뒤 슬롯을 눌러 배치하세요.
         </p>
         <div className="flex flex-wrap gap-3">
@@ -117,15 +117,15 @@ export function MatchComposer({
               draggable
               onDragStart={(e) => e.dataTransfer.setData("text/plain", p.id)}
               onClick={() => handleChipClick(p.id)}
-              className={`btn-press rounded-lg p-1 ${
-                selectedChip === p.id ? "bg-gold/20 ring-2 ring-gold" : ""
+              className={`btn-press rounded-2xl p-1.5 ${
+                selectedChip === p.id ? "bg-accent/30 ring-2 ring-accent" : ""
               }`}
             >
               <PlayerBadge avatarSrc={p.avatarSrc} name={p.name} />
             </button>
           ))}
           {pool.length === 0 && (
-            <p className="text-xs text-gray-400">모든 참가자가 배치되었습니다.</p>
+            <p className="text-xs text-muted-foreground">모든 참가자가 배치되었습니다.</p>
           )}
         </div>
       </div>
@@ -144,7 +144,7 @@ export function MatchComposer({
         <button
           type="submit"
           disabled={pending || !canSubmit}
-          className="btn-press w-full rounded bg-primary hover:bg-primary-hover py-2 text-white disabled:opacity-50"
+          className="btn-press lift-on-hover touch-target w-full rounded-full bg-primary py-3 font-medium text-white shadow-md shadow-primary/25 disabled:opacity-50"
         >
           {pending ? "등록 중..." : "경기 추가"}
         </button>
@@ -171,7 +171,7 @@ function TeamSlots({
   onClickSlot: (part: 1 | 2) => void;
 }) {
   return (
-    <fieldset className="rounded border p-3">
+    <fieldset className="rounded-2xl border border-border p-3">
       <legend className="px-1 text-sm font-medium">{label}</legend>
       <div className="mt-2 flex gap-3">
         <Slot
@@ -211,12 +211,12 @@ function Slot({
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
       onClick={onClick}
-      className="btn-press flex h-20 w-16 shrink-0 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-center hover:border-primary sm:h-24 sm:w-20"
+      className="btn-press flex h-20 w-16 shrink-0 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border text-center hover:border-primary sm:h-24 sm:w-20"
     >
       {player ? (
         <PlayerBadge avatarSrc={player.avatarSrc} name={player.name} />
       ) : (
-        <span className="text-xs text-gray-400">{label}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
       )}
     </button>
   );

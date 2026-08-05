@@ -25,9 +25,9 @@ export default async function MatchesPage() {
 
       <CreateDayForm />
 
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {days.length === 0 && (
-          <p className="text-sm text-gray-500">등록된 경기일이 없습니다.</p>
+          <p className="text-sm text-muted-foreground">등록된 경기일이 없습니다.</p>
         )}
         {days.map((d) => {
           const participants = d.participants.map((p) => ({
@@ -39,11 +39,13 @@ export default async function MatchesPage() {
             <li key={d.id}>
               <Link
                 href={`/matches/${d.id}`}
-                className="btn-press block space-y-2 rounded border px-4 py-3 hover:bg-muted"
+                className="btn-press surface-card block space-y-2.5 px-5 py-4"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{d.date.toISOString().slice(0, 10)}</span>
-                  <span className="text-sm text-gray-500">경기 {d._count.matches}건</span>
+                  <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                    경기 {d._count.matches}건
+                  </span>
                 </div>
                 <DayParticipantsPreview participants={participants} />
               </Link>

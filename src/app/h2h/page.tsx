@@ -97,46 +97,48 @@ export default async function H2HPage({
               {nameById.get(playerId) ?? "?"}의 상대별 전적
             </h2>
             {opponentRows.length === 0 ? (
-              <p className="text-sm text-gray-500">완료된 경기 기록이 없습니다.</p>
+              <p className="text-sm text-muted-foreground">완료된 경기 기록이 없습니다.</p>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-gray-500">
-                    <th className="py-2">상대</th>
-                    <th>전적</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {opponentRows.map((row) => {
-                    const opponent = playerById.get(row.opponentId);
-                    return (
-                      <tr key={row.opponentId} className="border-b">
-                        <td className="py-2">
-                          {opponent ? (
-                            <div className="flex items-center gap-2">
-                              <Avatar src={opponent.avatarSrc} size="sm" />
-                              <span>{opponent.name}</span>
-                            </div>
-                          ) : (
-                            "?"
-                          )}
-                        </td>
-                        <td className="text-gray-700">
-                          {row.wins}승 {row.draws}무 {row.losses}패 (총 {row.total}경기)
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="surface-card overflow-hidden p-2">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-muted-foreground">
+                      <th className="px-3 py-2 font-medium">상대</th>
+                      <th className="font-medium">전적</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {opponentRows.map((row) => {
+                      const opponent = playerById.get(row.opponentId);
+                      return (
+                        <tr key={row.opponentId} className="border-t border-border first:border-t-0">
+                          <td className="px-3 py-2.5">
+                            {opponent ? (
+                              <div className="flex items-center gap-2">
+                                <Avatar src={opponent.avatarSrc} size="sm" />
+                                <span>{opponent.name}</span>
+                              </div>
+                            ) : (
+                              "?"
+                            )}
+                          </td>
+                          <td className="text-foreground/80">
+                            {row.wins}승 {row.draws}무 {row.losses}패 (총 {row.total}경기)
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </section>
 
           <section>
             <h2 className="mb-3 text-lg font-semibold">최근 경기</h2>
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {matches.length === 0 && (
-                <p className="text-sm text-gray-500">완료된 경기가 없습니다.</p>
+                <p className="text-sm text-muted-foreground">완료된 경기가 없습니다.</p>
               )}
               {matches.map((m) => {
                 const selfSide = teamOf(m, playerId);
@@ -148,8 +150,8 @@ export default async function H2HPage({
                   .map((id) => playerById.get(id))
                   .filter((p): p is TeamPlayer => !!p);
                 return (
-                  <li key={m.id} className="rounded border px-4 py-3 text-sm">
-                    <p className="mb-2 text-gray-500">
+                  <li key={m.id} className="surface-card px-5 py-4 text-sm">
+                    <p className="mb-2 text-muted-foreground">
                       {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
                       {m.matchDay.date.toISOString().slice(0, 10)}
                     </p>

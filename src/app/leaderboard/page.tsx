@@ -27,6 +27,8 @@ export default async function LeaderboardPage() {
   );
 }
 
+const RANK_BADGE = ["bg-secondary text-secondary-foreground", "bg-gray-200 text-gray-600", "bg-amber-200 text-amber-800"];
+
 function RankingTable({
   title,
   rows,
@@ -45,37 +47,47 @@ function RankingTable({
     <section>
       <h2 className="mb-3 text-lg font-semibold">{title}</h2>
       {rows.length === 0 ? (
-        <p className="text-sm text-gray-500">등록된 선수가 없습니다.</p>
+        <p className="text-sm text-muted-foreground">등록된 선수가 없습니다.</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-gray-500">
-              <th className="py-2">순위</th>
-              <th>이름</th>
-              <th>ELO</th>
-              <th>전적</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={r.userId} className={`border-b ${i === 0 ? "bg-gold/10" : ""}`}>
-                <td className="py-2">{i + 1}</td>
-                <td>
-                  <div className="flex items-center gap-2">
-                    <Avatar src={avatarSrc(r.user)} size="sm" />
-                    <span>{r.user.name}</span>
-                  </div>
-                </td>
-                <td className="font-display text-base font-semibold text-primary">
-                  {Math.round(r.rating)}
-                </td>
-                <td className="text-gray-500">
-                  {r.wins}승 {r.losses}패 {r.draws}무
-                </td>
+        <div className="surface-card overflow-hidden p-2">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-muted-foreground">
+                <th className="px-3 py-2 font-medium">순위</th>
+                <th className="font-medium">이름</th>
+                <th className="font-medium">ELO</th>
+                <th className="font-medium">전적</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={r.userId} className="border-t border-border first:border-t-0">
+                  <td className="px-3 py-2.5">
+                    <span
+                      className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                        i < 3 ? RANK_BADGE[i] : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {i + 1}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      <Avatar src={avatarSrc(r.user)} size="sm" />
+                      <span>{r.user.name}</span>
+                    </div>
+                  </td>
+                  <td className="font-display text-base font-semibold text-primary">
+                    {Math.round(r.rating)}
+                  </td>
+                  <td className="text-muted-foreground">
+                    {r.wins}승 {r.losses}패 {r.draws}무
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );

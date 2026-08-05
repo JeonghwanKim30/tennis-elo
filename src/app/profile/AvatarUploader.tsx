@@ -66,9 +66,9 @@ export function AvatarUploader({ currentSrc }: { currentSrc: string }) {
       <img
         src={preview}
         alt=""
-        className="h-24 w-24 rounded-full border border-gray-200 object-cover"
+        className="h-24 w-24 rounded-full border border-border object-cover shadow-md shadow-primary/10"
       />
-      <label className="btn-press cursor-pointer text-sm text-primary underline">
+      <label className="btn-press touch-target cursor-pointer rounded-full bg-muted px-3 py-1.5 text-sm font-medium text-primary">
         {pending ? "업로드 중..." : "사진 변경"}
         <input type="file" accept="image/*" className="hidden" onChange={handleFile} />
       </label>

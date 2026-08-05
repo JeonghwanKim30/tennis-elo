@@ -21,7 +21,7 @@ export function LoginForm({ next }: { next?: string }) {
           name="name"
           type="text"
           required
-          className="mt-1 w-full rounded border px-3 py-2"
+          className="mt-1 w-full rounded-xl border border-border px-4 py-2.5"
         />
       </div>
       <div>
@@ -36,20 +36,20 @@ export function LoginForm({ next }: { next?: string }) {
           required
           maxLength={4}
           pattern="\d{4}"
-          className="mt-1 w-full rounded border px-3 py-2"
+          className="mt-1 w-full rounded-xl border border-border px-4 py-2.5"
         />
       </div>
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}
       <button
         type="submit"
         disabled={pending}
-        className="btn-press w-full rounded bg-primary hover:bg-primary-hover py-2 text-white disabled:opacity-50"
+        className="btn-press lift-on-hover touch-target w-full rounded-full bg-primary py-3 font-medium text-white shadow-md shadow-primary/25 disabled:opacity-50"
       >
         {pending ? "로그인 중..." : "로그인"}
       </button>
-      <p className="text-center text-sm text-gray-500">
+      <p className="text-center text-sm text-muted-foreground">
         계정이 없나요?{" "}
-        <Link href="/signup" className="btn-press text-primary underline">
+        <Link href="/signup" className="btn-press font-medium text-primary underline">
           회원가입
         </Link>
       </p>

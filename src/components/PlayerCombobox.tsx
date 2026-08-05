@@ -40,7 +40,7 @@ export function PlayerCombobox({
 
   return (
     <div className="relative" ref={containerRef}>
-      {label && <label className="block text-xs text-gray-500">{label}</label>}
+      {label && <label className="block text-xs font-medium text-muted-foreground">{label}</label>}
       <input
         type="text"
         value={query}
@@ -52,11 +52,11 @@ export function PlayerCombobox({
         onFocus={() => setOpen(true)}
         placeholder="이름 검색"
         autoComplete="off"
-        className="mt-1 w-full rounded border px-3 py-2"
+        className="mt-1 w-full rounded-xl border border-border px-4 py-2.5"
       />
       <input type="hidden" name={name} value={selectedId} />
       {open && filtered.length > 0 && (
-        <ul className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded border bg-white shadow">
+        <ul className="surface-card absolute z-10 mt-1 max-h-48 w-full overflow-auto p-1.5">
           {filtered.map((p) => (
             <li key={p.id}>
               <button
@@ -66,7 +66,7 @@ export function PlayerCombobox({
                   setQuery(p.name);
                   setOpen(false);
                 }}
-                className="btn-press block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                className="btn-press block w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-muted"
               >
                 {p.name}
               </button>

@@ -53,26 +53,25 @@ export default async function AdminPage() {
       <section>
         <h2 className="mb-3 text-lg font-semibold">가입 승인 대기 ({pendingUsers.length})</h2>
         {pendingUsers.length === 0 ? (
-          <p className="text-sm text-gray-500">대기 중인 가입 신청이 없습니다.</p>
+          <p className="text-sm text-muted-foreground">대기 중인 가입 신청이 없습니다.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {pendingUsers.map((u) => (
-              <li
-                key={u.id}
-                className="flex items-center justify-between rounded border px-4 py-3"
-              >
+              <li key={u.id} className="surface-card flex items-center justify-between px-5 py-4">
                 <div>
                   <p className="font-medium">{u.name}</p>
-                  <p className="text-sm text-gray-500">{formatPhone(u.phone)}</p>
+                  <p className="text-sm text-muted-foreground">{formatPhone(u.phone)}</p>
                 </div>
                 <div className="flex gap-2">
                   <form action={approveUserAction.bind(null, u.id)}>
-                    <button className="btn-press rounded bg-primary hover:bg-primary-hover px-3 py-1 text-sm text-white">
+                    <button className="btn-press touch-target rounded-full bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm shadow-primary/25">
                       승인
                     </button>
                   </form>
                   <form action={rejectUserAction.bind(null, u.id)}>
-                    <button className="btn-press rounded bg-gray-200 px-3 py-1 text-sm">거절</button>
+                    <button className="btn-press touch-target rounded-full bg-muted px-4 py-2 text-sm font-medium text-foreground/70">
+                      거절
+                    </button>
                   </form>
                 </div>
               </li>
@@ -86,9 +85,9 @@ export default async function AdminPage() {
           예정된 경기 — 점수 입력 ({scheduledMatches.length})
         </h2>
         {scheduledMatches.length === 0 ? (
-          <p className="text-sm text-gray-500">점수 입력을 기다리는 경기가 없습니다.</p>
+          <p className="text-sm text-muted-foreground">점수 입력을 기다리는 경기가 없습니다.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {scheduledMatches.map((m) => {
               const a1 = playerById.get(m.teamAPlayer1);
               const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
@@ -96,8 +95,8 @@ export default async function AdminPage() {
               const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
               if (!a1 || !b1) return null;
               return (
-                <li key={m.id} className="space-y-3 rounded border px-4 py-3">
-                  <p className="text-sm text-gray-500">
+                <li key={m.id} className="surface-card space-y-3 px-5 py-4">
+                  <p className="text-sm text-muted-foreground">
                     {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
                     {m.matchDay.date.toISOString().slice(0, 10)}
                   </p>
@@ -113,9 +112,9 @@ export default async function AdminPage() {
       <section>
         <h2 className="mb-3 text-lg font-semibold">완료된 경기</h2>
         {completedMatches.length === 0 ? (
-          <p className="text-sm text-gray-500">완료된 경기가 없습니다.</p>
+          <p className="text-sm text-muted-foreground">완료된 경기가 없습니다.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {completedMatches.map((m) => {
               const a1 = playerById.get(m.teamAPlayer1);
               const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
@@ -123,8 +122,8 @@ export default async function AdminPage() {
               const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
               if (!a1 || !b1) return null;
               return (
-                <li key={m.id} className="space-y-3 rounded border px-4 py-3">
-                  <p className="text-sm text-gray-500">
+                <li key={m.id} className="surface-card space-y-3 px-5 py-4">
+                  <p className="text-sm text-muted-foreground">
                     {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
                     {m.matchDay.date.toISOString().slice(0, 10)}
                   </p>
@@ -144,7 +143,7 @@ export default async function AdminPage() {
                     }
                   />
                   <form action={deleteMatchAction.bind(null, m.id)}>
-                    <button className="btn-press rounded bg-destructive/10 px-3 py-1 text-sm text-destructive">
+                    <button className="btn-press touch-target rounded-full bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive">
                       삭제
                     </button>
                   </form>

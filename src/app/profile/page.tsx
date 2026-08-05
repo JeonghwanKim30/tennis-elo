@@ -68,27 +68,27 @@ export default async function ProfilePage({
         <AvatarUploader currentSrc={avatarSrc(user)} />
         <div>
           <h1 className="text-2xl font-bold">{user.name}</h1>
-          <p className="text-sm text-gray-500">{formatPhone(user.phone)}</p>
+          <p className="text-sm text-muted-foreground">{formatPhone(user.phone)}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="rounded border p-4 text-center">
-          <p className="text-sm text-gray-500">단식 ELO</p>
+        <div className="surface-card p-4 text-center">
+          <p className="text-sm text-muted-foreground">단식 ELO</p>
           <p className="font-display text-4xl font-bold text-primary">
             {Math.round(singles?.rating ?? 1200)}
           </p>
         </div>
-        <div className="rounded border p-4 text-center">
-          <p className="text-sm text-gray-500">복식 ELO</p>
+        <div className="surface-card p-4 text-center">
+          <p className="text-sm text-muted-foreground">복식 ELO</p>
           <p className="font-display text-4xl font-bold text-primary">
             {Math.round(doubles?.rating ?? 1200)}
           </p>
         </div>
       </div>
 
-      <div className="rounded border p-4">
-        <p className="mb-2 text-sm text-gray-500">총 전적</p>
+      <div className="surface-card p-4">
+        <p className="mb-2 text-sm text-muted-foreground">총 전적</p>
         <div className="flex gap-6 text-center">
           <Stat label="경기" value={totalGames} />
           <Stat label="승" value={totalWins} />
@@ -98,7 +98,7 @@ export default async function ProfilePage({
       </div>
 
       <div>
-        <div className="mb-4 flex gap-1 border-b">
+        <div className="mb-4 flex gap-2">
           <TabLink tab="all" current={tab} label="전체" />
           <TabLink tab="singles" current={tab} label="단식" />
           <TabLink tab="doubles" current={tab} label="복식" />
@@ -125,7 +125,7 @@ export default async function ProfilePage({
 
         <ul className="space-y-3">
           {matches.length === 0 && (
-            <p className="text-sm text-gray-500">경기 기록이 없습니다.</p>
+            <p className="text-sm text-muted-foreground">경기 기록이 없습니다.</p>
           )}
           {matches.map((m) => {
             const teamAP1 = playerById.get(m.teamAPlayer1);
@@ -134,8 +134,8 @@ export default async function ProfilePage({
             const teamBP2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
             if (!teamAP1 || !teamBP1) return null;
             return (
-              <li key={m.id} className="rounded border px-4 py-3 text-sm">
-                <p className="mb-2 text-gray-500">
+              <li key={m.id} className="surface-card px-5 py-4 text-sm">
+                <p className="mb-2 text-muted-foreground">
                   {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
                   {m.matchDay.date.toISOString().slice(0, 10)}
                 </p>
@@ -167,7 +167,7 @@ function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div>
       <p className="text-xl font-bold">{value}</p>
-      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -184,7 +184,7 @@ function BreakdownRow({
   draws: number;
 }) {
   return (
-    <div className="flex items-center justify-between rounded bg-gray-50 px-4 py-2 text-sm">
+    <div className="flex items-center justify-between rounded-2xl bg-muted px-4 py-2.5 text-sm">
       <span className="font-medium">{label}</span>
       <span>
         {wins}승 {losses}패 {draws}무 (총 {wins + losses + draws}경기)
@@ -199,8 +199,8 @@ function TabLink({ tab, current, label }: { tab: Tab; current: Tab; label: strin
   return (
     <Link
       href={href}
-      className={`border-b-2 px-3 py-2 text-sm ${
-        isActive ? "border-primary font-medium text-primary" : "border-transparent text-gray-500"
+      className={`btn-press touch-target rounded-full px-4 py-2 text-sm font-medium ${
+        isActive ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
       }`}
     >
       {label}

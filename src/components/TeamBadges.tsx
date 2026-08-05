@@ -20,12 +20,12 @@ export function TeamBadges({
     <div className="flex items-start gap-3">
       <div className="flex flex-col items-center gap-1">
         <PlayerBadge avatarSrc={player1.avatarSrc} name={player1.name} />
-        {type === "DOUBLES" && <span className="text-xs text-gray-400">포핸드</span>}
+        {type === "DOUBLES" && <span className="text-xs text-muted-foreground">포핸드</span>}
       </div>
       {type === "DOUBLES" && player2 && (
         <div className="flex flex-col items-center gap-1">
           <PlayerBadge avatarSrc={player2.avatarSrc} name={player2.name} />
-          <span className="text-xs text-gray-400">백핸드</span>
+          <span className="text-xs text-muted-foreground">백핸드</span>
         </div>
       )}
     </div>

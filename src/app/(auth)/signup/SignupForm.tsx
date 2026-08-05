@@ -13,10 +13,10 @@ export function SignupForm() {
     return (
       <div className="space-y-4 text-center">
         <p className="text-lg font-medium">가입 신청이 접수되었습니다.</p>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted-foreground">
           관리자 승인 후 로그인할 수 있습니다. 승인까지 시간이 걸릴 수 있습니다.
         </p>
-        <Link href="/login" className="btn-press inline-block text-primary underline">
+        <Link href="/login" className="btn-press inline-block font-medium text-primary underline">
           로그인 페이지로 이동
         </Link>
       </div>
@@ -35,7 +35,7 @@ export function SignupForm() {
           type="text"
           required
           maxLength={50}
-          className="mt-1 w-full rounded border px-3 py-2"
+          className="mt-1 w-full rounded-xl border border-border px-4 py-2.5"
         />
       </div>
       <div>
@@ -48,21 +48,21 @@ export function SignupForm() {
           type="tel"
           required
           placeholder="01012345678"
-          className="mt-1 w-full rounded border px-3 py-2"
+          className="mt-1 w-full rounded-xl border border-border px-4 py-2.5"
         />
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           PIN 번호는 휴대폰 번호의 뒷자리 4자리로 자동 설정됩니다.
         </p>
       </div>
       <div>
         <span className="block text-sm font-medium">성별</span>
-        <div className="mt-1 flex gap-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="radio" name="gender" value="MALE" required defaultChecked />
+        <div className="mt-1.5 flex gap-2">
+          <label className="btn-press touch-target has-[:checked]:bg-primary has-[:checked]:text-white has-[:checked]:shadow-sm has-[:checked]:shadow-primary/30 flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-border bg-muted py-2.5 text-sm font-medium text-foreground/70">
+            <input type="radio" name="gender" value="MALE" required defaultChecked className="sr-only" />
             남
           </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="radio" name="gender" value="FEMALE" required />
+          <label className="btn-press touch-target has-[:checked]:bg-primary has-[:checked]:text-white has-[:checked]:shadow-sm has-[:checked]:shadow-primary/30 flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-border bg-muted py-2.5 text-sm font-medium text-foreground/70">
+            <input type="radio" name="gender" value="FEMALE" required className="sr-only" />
             여
           </label>
         </div>
@@ -71,13 +71,13 @@ export function SignupForm() {
       <button
         type="submit"
         disabled={pending}
-        className="btn-press w-full rounded bg-primary hover:bg-primary-hover py-2 text-white disabled:opacity-50"
+        className="btn-press lift-on-hover touch-target w-full rounded-full bg-primary py-3 font-medium text-white shadow-md shadow-primary/25 disabled:opacity-50"
       >
         {pending ? "제출 중..." : "가입 신청"}
       </button>
-      <p className="text-center text-sm text-gray-500">
+      <p className="text-center text-sm text-muted-foreground">
         이미 계정이 있나요?{" "}
-        <Link href="/login" className="btn-press text-primary underline">
+        <Link href="/login" className="btn-press font-medium text-primary underline">
           로그인
         </Link>
       </p>

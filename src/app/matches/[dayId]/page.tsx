@@ -57,18 +57,20 @@ export default async function MatchDayPage({
     <main className="mx-auto max-w-3xl space-y-8 px-4 py-12">
       <h1 className="text-2xl font-bold">{day.date.toISOString().slice(0, 10)} 경기</h1>
 
-      <section>
+      <section className="surface-card p-5">
         <h2 className="mb-3 text-lg font-semibold">참가자 ({participants.length})</h2>
         <div className="flex flex-wrap gap-4">
           {participants.length === 0 && (
-            <p className="text-sm text-gray-500">아직 참가자가 없습니다.</p>
+            <p className="text-sm text-muted-foreground">아직 참가자가 없습니다.</p>
           )}
           {participants.map((p) => (
             <div key={p.id} className="flex flex-col items-center">
               <PlayerBadge avatarSrc={p.avatarSrc} name={p.name} />
               {user && (
                 <form action={removeParticipantAction.bind(null, day.id, p.id)}>
-                  <button className="btn-press mt-1 text-[10px] text-destructive underline">제거</button>
+                  <button className="btn-press mt-1 rounded-full px-2 py-1 text-[10px] text-destructive underline">
+                    제거
+                  </button>
                 </form>
               )}
             </div>
@@ -82,9 +84,9 @@ export default async function MatchDayPage({
       <section>
         <h2 className="mb-3 text-lg font-semibold">예정된 경기 ({scheduled.length})</h2>
         {scheduled.length === 0 ? (
-          <p className="text-sm text-gray-500">점수 입력을 기다리는 경기가 없습니다.</p>
+          <p className="text-sm text-muted-foreground">점수 입력을 기다리는 경기가 없습니다.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {scheduled.map((m) => {
               const a1 = playerById.get(m.teamAPlayer1);
               const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
@@ -92,8 +94,8 @@ export default async function MatchDayPage({
               const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
               if (!a1 || !b1) return null;
               return (
-                <li key={m.id} className="rounded border px-4 py-3">
-                  <p className="mb-2 text-sm text-gray-500">
+                <li key={m.id} className="surface-card px-5 py-4">
+                  <p className="mb-2 text-sm text-muted-foreground">
                     {m.type === "SINGLES" ? "단식" : "복식"} · 점수 입력 대기 중
                   </p>
                   <MatchupRow type={m.type} teamA1={a1} teamA2={a2} teamB1={b1} teamB2={b2} />
@@ -107,9 +109,9 @@ export default async function MatchDayPage({
       <section>
         <h2 className="mb-3 text-lg font-semibold">완료된 경기</h2>
         {completed.length === 0 ? (
-          <p className="text-sm text-gray-500">완료된 경기가 없습니다.</p>
+          <p className="text-sm text-muted-foreground">완료된 경기가 없습니다.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {completed.map((m) => {
               const a1 = playerById.get(m.teamAPlayer1);
               const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
@@ -117,8 +119,8 @@ export default async function MatchDayPage({
               const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
               if (!a1 || !b1) return null;
               return (
-                <li key={m.id} className="rounded border px-4 py-3">
-                  <p className="mb-2 text-sm text-gray-500">
+                <li key={m.id} className="surface-card px-5 py-4">
+                  <p className="mb-2 text-sm text-muted-foreground">
                     {m.type === "SINGLES" ? "단식" : "복식"}
                   </p>
                   <MatchupRow

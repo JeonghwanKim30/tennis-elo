@@ -1,26 +1,27 @@
 @import "tailwindcss";
 
-/* ui-ux-pro-max "Sports Team/Club" 팔레트 (Team red + championship gold).
+/* "귀엽고 부드러운 테니스" 팔레트 — 따뜻한 크림 배경 + 코랄 포인트 + 라임(테니스공) 서브 포인트.
    시스템이 다크모드여도 항상 밝게 고정한다. */
 :root {
-  --background: #fef2f2;
-  --foreground: #7f1d1d;
-  --primary: #dc2626;
+  --background: #fffaf5;
+  --foreground: #5c4438;
+  --primary: #f2624f;
   --primary-foreground: #ffffff;
-  --primary-hover: #b91c1c;
-  --secondary: #ef4444;
-  --secondary-foreground: #ffffff;
-  --accent: #dc2626;
-  --accent-foreground: #ffffff;
-  --gold: #fbbf24;
+  --primary-hover: #e2503d;
+  --secondary: #ffd166;
+  --secondary-foreground: #6b4a10;
+  --accent: #cbe86b;
+  --accent-foreground: #4a5a1a;
+  --gold: #ffd166;
   --card: #ffffff;
-  --card-foreground: #7f1d1d;
-  --muted: #f0edf1;
-  --muted-foreground: #64748b;
-  --border: #fecaca;
-  --destructive: #dc2626;
+  --card-foreground: #5c4438;
+  --muted: #fff1e6;
+  --muted-foreground: #9a8478;
+  --border: #ffe1cf;
+  --destructive: #e2503d;
   --destructive-foreground: #ffffff;
-  --ring: #dc2626;
+  --ring: #f2624f;
+  --radius: 1rem;
 }
 
 @theme inline {
@@ -72,12 +73,47 @@ textarea::placeholder {
   color: #9ca3af;
 }
 
+/* 카드형 표면의 기본 스타일 — 둥근 모서리 + 은은한 그림자.
+   기존 "rounded border" 조합 대신 이 클래스를 쓰면 통일된 카드 느낌을 낸다. */
+.surface-card {
+  border-radius: 1.25rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(92, 68, 56, 0.04), 0 6px 16px -8px rgba(242, 98, 79, 0.12);
+}
+
 /* 버튼/클릭 가능한 링크에 눌리는 느낌을 준다. 모바일에서는 hover가 잘 안 먹으니
-   active(누르는 순간)를 기준으로 살짝 줄어들게 한다. */
+   active(누르는 순간)를 기준으로 확실하게 축소 + 그림자 감소, 마우스 환경에서는
+   hover 시 살짝 떠오르는 느낌을 더한다. */
 .btn-press {
-  transition: transform 100ms ease, opacity 100ms ease, filter 100ms ease;
+  transition: transform 120ms ease, opacity 120ms ease, filter 120ms ease, box-shadow 120ms ease;
 }
 .btn-press:active {
-  transform: scale(0.96);
-  filter: brightness(0.95);
+  transform: scale(0.93);
+  filter: brightness(0.93);
+  box-shadow: none !important;
+}
+@media (hover: hover) {
+  .btn-press:hover {
+    filter: brightness(1.04);
+  }
+  .btn-press.lift-on-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -8px rgba(92, 68, 56, 0.25);
+  }
+}
+
+/* 손가락으로 누르기 쉽도록 터치 영역을 최소 44px로 보장한다. */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* 상단 탭 메뉴처럼 가로 스크롤은 되지만 스크롤바는 안 보이게 한다. */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
