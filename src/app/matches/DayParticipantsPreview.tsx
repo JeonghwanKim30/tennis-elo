@@ -18,7 +18,7 @@ export function DayParticipantsPreview({ participants }: { participants: DayPart
   const longPressedRef = useRef(false);
 
   if (participants.length === 0) {
-    return <p className="text-sm text-muted-foreground">아직 참가자가 없습니다.</p>;
+    return <p className="text-sm text-muted-foreground">아직 참여를 선택한 회원이 없습니다.</p>;
   }
 
   const visible = participants.slice(0, MAX_VISIBLE);
@@ -75,7 +75,7 @@ export function DayParticipantsPreview({ participants }: { participants: DayPart
       {showPopup && (
         <div className="surface-card absolute left-0 top-full z-20 mt-2 w-56 p-3 shadow-xl">
           <p className="mb-2 text-xs font-medium text-muted-foreground">
-            참가자 {participants.length}명
+            참여 {participants.length}명
           </p>
           <ul className="max-h-56 space-y-2 overflow-auto">
             {participants.map((p) => (

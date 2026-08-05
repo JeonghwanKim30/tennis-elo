@@ -63,7 +63,9 @@ export default async function MatchesPage({
   if (scope === "upcoming") daysWithDiff = daysWithDiff.filter((d) => d.diffDays >= 0);
   if (scope === "past") daysWithDiff = daysWithDiff.filter((d) => d.diffDays < 0);
   if (mineOnly && user) {
-    daysWithDiff = daysWithDiff.filter((d) => d.participants.some((p) => p.userId === user.id));
+    daysWithDiff = daysWithDiff.filter((d) =>
+      d.participants.some((p) => p.userId === user.id && p.status === "ATTENDING")
+    );
   }
 
   daysWithDiff.sort((a, b) => Math.abs(a.diffDays) - Math.abs(b.diffDays) || a.diffDays - b.diffDays);
@@ -112,11 +114,13 @@ export default async function MatchesPage({
           <p className="text-sm text-muted-foreground">해당하는 경기일이 없습니다.</p>
         )}
         {daysWithDiff.map((d) => {
-          const participants = d.participants.map((p) => ({
-            id: p.user.id,
-            name: p.user.name,
-            avatarSrc: avatarSrc(p.user),
-          }));
+          const attending = d.participants
+            .filter((p) => p.status === "ATTENDING")
+            .map((p) => ({
+              id: p.user.id,
+              name: p.user.name,
+              avatarSrc: avatarSrc(p.user),
+            }));
           return (
             <li key={d.id}>
               <Link
@@ -139,7 +143,7 @@ export default async function MatchesPage({
                     경기 {d._count.matches}건
                   </span>
                 </div>
-                <DayParticipantsPreview participants={participants} />
+                <DayParticipantsPreview participants={attending} />
               </Link>
             </li>
           );

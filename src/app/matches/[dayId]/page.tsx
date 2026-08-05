@@ -8,9 +8,8 @@ import { PlayerBadge } from "@/components/PlayerBadge";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { MatchupRow } from "@/components/MatchupRow";
 import type { ParticipationStatus } from "@/generated/prisma/client";
-import { ParticipantManager } from "./ParticipantManager";
 import { MatchComposerPanel } from "./MatchComposerPanel";
-import { removeParticipantAction, setParticipationStatusAction } from "./actions";
+import { setParticipationStatusAction } from "./actions";
 
 const RSVP_LABEL: Record<ParticipationStatus, string> = {
   ATTENDING: "참여",
@@ -22,6 +21,10 @@ const RSVP_BADGE: Record<ParticipationStatus, string> = {
   NOT_ATTENDING: "bg-destructive/10 text-destructive",
   PENDING: "bg-muted text-muted-foreground",
 };
+
+interface Member extends TeamPlayer {
+  status: ParticipationStatus;
+}
 
 export default async function MatchDayPage({
   params,
@@ -36,53 +39,45 @@ export default async function MatchDayPage({
 
   const day = await prisma.matchDay.findUnique({
     where: { id: dayId },
-    include: {
-      participants: {
-        include: {
-          user: {
-            select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
-          },
-        },
-      },
-      matches: { orderBy: { submittedAt: "asc" } },
-    },
+    include: { matches: { orderBy: { submittedAt: "asc" } } },
   });
   if (!day) notFound();
 
+  // 회원 전체(Users)를 기준으로 하고, 그날의 응답 기록(Attendants = MatchDayParticipant)을
+  // LEFT JOIN 하듯 매핑한다 — 응답 기록이 없으면 "미응답"으로 취급.
+  const [activeUsers, dayParticipants] = await Promise.all([
+    prisma.user.findMany({
+      where: { status: "ACTIVE" },
+      select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.matchDayParticipant.findMany({ where: { matchDayId: dayId } }),
+  ]);
+  const statusByUserId = new Map(dayParticipants.map((p) => [p.userId, p.status]));
+
   // profileImage(Bytes)는 클라이언트 컴포넌트(MatchComposerPanel)로 넘어갈 수 없으므로
   // 문자열 avatarSrc로 미리 변환해둔다.
-  const participants: TeamPlayer[] = day.participants.map((p) => ({
-    id: p.user.id,
-    name: p.user.name,
-    avatarSrc: avatarSrc(p.user),
+  const members: Member[] = activeUsers.map((u) => ({
+    id: u.id,
+    name: u.name,
+    avatarSrc: avatarSrc(u),
+    status: statusByUserId.get(u.id) ?? "PENDING",
   }));
-  const participantIds = new Set(participants.map((p) => p.id));
-  const playerById = new Map(participants.map((p) => [p.id, p]));
-  const statusByUserId = new Map(day.participants.map((p) => [p.userId, p.status]));
-
-  const activeUsers = await prisma.user.findMany({
-    where: { status: "ACTIVE" },
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
-  });
-  const addablePlayers = activeUsers.filter((u) => !participantIds.has(u.id));
+  const playerById = new Map(members.map((m) => [m.id, m]));
+  const attendingMembers: TeamPlayer[] = members.filter((m) => m.status === "ATTENDING");
 
   const scheduled = day.matches.filter((m) => m.status === "PENDING");
   const completed = day.matches.filter((m) => m.status === "APPROVED");
 
-  const isAdmin = user?.role === "ADMIN";
   const rsvpFilter: ParticipationStatus | "ALL" =
     rsvp === "ATTENDING" || rsvp === "NOT_ATTENDING" || rsvp === "PENDING" ? rsvp : "ALL";
   const rsvpCounts = {
-    ALL: day.participants.length,
-    ATTENDING: day.participants.filter((p) => p.status === "ATTENDING").length,
-    NOT_ATTENDING: day.participants.filter((p) => p.status === "NOT_ATTENDING").length,
-    PENDING: day.participants.filter((p) => p.status === "PENDING").length,
+    ALL: members.length,
+    ATTENDING: attendingMembers.length,
+    NOT_ATTENDING: members.filter((m) => m.status === "NOT_ATTENDING").length,
+    PENDING: members.filter((m) => m.status === "PENDING").length,
   };
-  const visibleParticipants =
-    isAdmin && rsvpFilter !== "ALL"
-      ? participants.filter((p) => statusByUserId.get(p.id) === rsvpFilter)
-      : participants;
+  const visibleMembers = rsvpFilter === "ALL" ? members : members.filter((m) => m.status === rsvpFilter);
 
   return (
     <main className="mx-auto max-w-3xl space-y-8 px-4 py-12">
@@ -98,53 +93,56 @@ export default async function MatchDayPage({
       </div>
 
       <section className="surface-card p-5">
-        <h2 className="mb-3 text-lg font-semibold">참가자 ({participants.length})</h2>
+        <h2 className="mb-3 text-lg font-semibold">참석 여부</h2>
 
-        {isAdmin && (
-          <div className="mb-4 flex flex-wrap gap-2">
-            {(["ALL", "ATTENDING", "NOT_ATTENDING", "PENDING"] as const).map((key) => (
-              <Link
-                key={key}
-                href={key === "ALL" ? `/matches/${day.id}` : `/matches/${day.id}?rsvp=${key}`}
-                className={`btn-press touch-target rounded-full px-3 py-1.5 text-xs font-medium ${
-                  rsvpFilter === key ? "bg-primary text-white" : "bg-muted text-foreground/70"
-                }`}
-              >
-                {key === "ALL" ? "전체" : RSVP_LABEL[key]} {rsvpCounts[key]}
-              </Link>
-            ))}
-          </div>
-        )}
+        <div className="mb-4 flex flex-wrap justify-center gap-2 sm:justify-start">
+          {(["ALL", "ATTENDING", "NOT_ATTENDING", "PENDING"] as const).map((key) => (
+            <Link
+              key={key}
+              href={key === "ALL" ? `/matches/${day.id}` : `/matches/${day.id}?rsvp=${key}`}
+              aria-current={rsvpFilter === key ? "page" : undefined}
+              className={`btn-press touch-target rounded-full px-3 py-1.5 text-xs font-medium ${
+                rsvpFilter === key ? "bg-primary text-white" : "bg-muted text-foreground/70"
+              }`}
+            >
+              {key === "ALL" ? "전체" : RSVP_LABEL[key]} {rsvpCounts[key]}
+            </Link>
+          ))}
+        </div>
 
         <div className="flex flex-wrap justify-center gap-4 sm:justify-start">
-          {visibleParticipants.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              {isAdmin && rsvpFilter !== "ALL" ? "해당하는 참가자가 없습니다." : "아직 참가자가 없습니다."}
-            </p>
+          {visibleMembers.length === 0 && (
+            <p className="text-sm text-muted-foreground">해당하는 회원이 없습니다.</p>
           )}
-          {visibleParticipants.map((p) => {
-            const status = statusByUserId.get(p.id) ?? "PENDING";
-            const canEdit = !!user && (user.id === p.id || isAdmin);
+          {visibleMembers.map((m) => {
+            const isSelf = user?.id === m.id;
+            const canEdit = !!user && (isSelf || user.role === "ADMIN");
             return (
-              <div key={p.id} className="flex flex-col items-center gap-1.5">
-                <PlayerBadge avatarSrc={p.avatarSrc} name={p.name} />
+              <div
+                key={m.id}
+                className={`flex flex-col items-center gap-1.5 rounded-2xl p-2 ${
+                  isSelf ? "bg-accent/15 ring-1 ring-accent" : ""
+                }`}
+              >
+                <PlayerBadge avatarSrc={m.avatarSrc} name={m.name} />
+                {isSelf && <span className="text-[10px] font-medium text-muted-foreground">나</span>}
                 {canEdit ? (
                   <div className="flex gap-1">
-                    <form action={setParticipationStatusAction.bind(null, day.id, p.id, "ATTENDING")}>
+                    <form action={setParticipationStatusAction.bind(null, day.id, m.id, "ATTENDING")}>
                       <button
                         className={`btn-press rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                          status === "ATTENDING" ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                          m.status === "ATTENDING" ? "bg-primary text-white" : "bg-muted text-muted-foreground"
                         }`}
                       >
                         참여
                       </button>
                     </form>
                     <form
-                      action={setParticipationStatusAction.bind(null, day.id, p.id, "NOT_ATTENDING")}
+                      action={setParticipationStatusAction.bind(null, day.id, m.id, "NOT_ATTENDING")}
                     >
                       <button
                         className={`btn-press rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                          status === "NOT_ATTENDING"
+                          m.status === "NOT_ATTENDING"
                             ? "bg-destructive text-white"
                             : "bg-muted text-muted-foreground"
                         }`}
@@ -154,25 +152,17 @@ export default async function MatchDayPage({
                     </form>
                   </div>
                 ) : (
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${RSVP_BADGE[status]}`}>
-                    {RSVP_LABEL[status]}
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${RSVP_BADGE[m.status]}`}>
+                    {RSVP_LABEL[m.status]}
                   </span>
-                )}
-                {user && (
-                  <form action={removeParticipantAction.bind(null, day.id, p.id)}>
-                    <button className="btn-press rounded-full px-2 py-1 text-[10px] text-destructive underline">
-                      제거
-                    </button>
-                  </form>
                 )}
               </div>
             );
           })}
         </div>
-        {user && <ParticipantManager dayId={day.id} players={addablePlayers} />}
       </section>
 
-      {user && <MatchComposerPanel dayId={day.id} participants={participants} />}
+      {user && <MatchComposerPanel dayId={day.id} participants={attendingMembers} />}
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">예정된 경기 ({scheduled.length})</h2>

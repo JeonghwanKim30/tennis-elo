@@ -28,7 +28,9 @@ export function MatchComposerPanel({
       </div>
       {open ? (
         participants.length < 2 ? (
-          <p className="text-sm text-muted-foreground">참가자가 2명 이상이어야 경기를 추가할 수 있습니다.</p>
+          <p className="text-sm text-muted-foreground">
+            &ldquo;참여&rdquo;를 선택한 회원이 2명 이상이어야 경기를 추가할 수 있습니다.
+          </p>
         ) : (
           <MatchComposer dayId={dayId} participants={participants} />
         )

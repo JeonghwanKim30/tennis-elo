@@ -5,50 +5,25 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { matchSubmitSchema } from "@/lib/validation";
 
-export async function addParticipantAction(dayId: string, formData: FormData) {
-  await requireUser();
-
-  const userId = formData.get("userId");
-  if (typeof userId !== "string" || !userId) return;
-
-  await prisma.matchDayParticipant.upsert({
-    where: { matchDayId_userId: { matchDayId: dayId, userId } },
-    create: { matchDayId: dayId, userId },
-    update: {},
-  });
-
-  revalidatePath(`/matches/${dayId}`);
-}
-
-export async function removeParticipantAction(
-  dayId: string,
-  userId: string,
-  _formData: FormData
-) {
-  await requireUser();
-
-  await prisma.matchDayParticipant
-    .delete({ where: { matchDayId_userId: { matchDayId: dayId, userId } } })
-    .catch(() => {});
-
-  revalidatePath(`/matches/${dayId}`);
-}
-
-// 참가자 본인 또는 관리자만 참여 상태(참여/불참/미응답)를 바꿀 수 있다.
+// 본인 또는 관리자만 참여/불참을 투표할 수 있다. 해당 일자에 아직 기록이 없으면
+// (한 번도 응답하지 않은 회원 = 미응답) 새로 만들고, 있으면 상태만 갱신한다.
 export async function setParticipationStatusAction(
   dayId: string,
   userId: string,
-  status: "PENDING" | "ATTENDING" | "NOT_ATTENDING",
+  status: "ATTENDING" | "NOT_ATTENDING",
   _formData: FormData
 ) {
   const user = await requireUser();
   if (user.id !== userId && user.role !== "ADMIN") return;
 
-  await prisma.matchDayParticipant
-    .update({ where: { matchDayId_userId: { matchDayId: dayId, userId } }, data: { status } })
-    .catch(() => {});
+  await prisma.matchDayParticipant.upsert({
+    where: { matchDayId_userId: { matchDayId: dayId, userId } },
+    create: { matchDayId: dayId, userId, status },
+    update: { status },
+  });
 
   revalidatePath(`/matches/${dayId}`);
+  revalidatePath("/matches");
 }
 
 export interface CreateMatchState {
@@ -74,11 +49,12 @@ export async function createMatchInDayAction(
   }
   const data = parsed.data;
 
-  const participants = await prisma.matchDayParticipant.findMany({
-    where: { matchDayId: dayId },
+  // 팀 구성은 그날 "참여"를 선택한 사람 중에서만 가능하다.
+  const attending = await prisma.matchDayParticipant.findMany({
+    where: { matchDayId: dayId, status: "ATTENDING" },
     select: { userId: true },
   });
-  const participantIds = new Set(participants.map((p) => p.userId));
+  const attendingIds = new Set(attending.map((p) => p.userId));
 
   const playerIds = [
     data.teamAPlayer1,
@@ -87,8 +63,8 @@ export async function createMatchInDayAction(
     data.teamBPlayer2,
   ].filter((id): id is string => !!id);
 
-  if (!playerIds.every((id) => participantIds.has(id))) {
-    return { error: "해당 경기일의 참가자만 선택할 수 있습니다." };
+  if (!playerIds.every((id) => attendingIds.has(id))) {
+    return { error: "참여를 선택한 회원만 경기에 배치할 수 있습니다." };
   }
 
   await prisma.match.create({
