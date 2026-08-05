@@ -9,6 +9,7 @@ import { type TeamPlayer } from "@/components/TeamBadges";
 import { MatchupRow } from "@/components/MatchupRow";
 import type { ParticipationStatus } from "@/generated/prisma/client";
 import { MatchComposerPanel } from "./MatchComposerPanel";
+import { AttendanceCarousel } from "./AttendanceCarousel";
 import { setParticipationStatusAction } from "./actions";
 
 const RSVP_LABEL: Record<ParticipationStatus, string> = {
@@ -21,9 +22,18 @@ const RSVP_BADGE: Record<ParticipationStatus, string> = {
   NOT_ATTENDING: "bg-destructive/10 text-destructive",
   PENDING: "bg-muted text-muted-foreground",
 };
+const ATTENDANCE_PAGE_SIZE = 9;
 
 interface Member extends TeamPlayer {
   status: ParticipationStatus;
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const pages: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    pages.push(items.slice(i, i + size));
+  }
+  return pages;
 }
 
 export default async function MatchDayPage({
@@ -110,56 +120,66 @@ export default async function MatchDayPage({
           ))}
         </div>
 
-        <div className="flex flex-wrap justify-center gap-4 sm:justify-start">
-          {visibleMembers.length === 0 && (
-            <p className="text-sm text-muted-foreground">해당하는 회원이 없습니다.</p>
-          )}
-          {visibleMembers.map((m) => {
-            const isSelf = user?.id === m.id;
-            const canEdit = !!user && (isSelf || user.role === "ADMIN");
-            return (
-              <div
-                key={m.id}
-                className={`flex flex-col items-center gap-1.5 rounded-2xl p-2 ${
-                  isSelf ? "bg-accent/15 ring-1 ring-accent" : ""
-                }`}
-              >
-                <PlayerBadge avatarSrc={m.avatarSrc} name={m.name} />
-                {isSelf && <span className="text-[10px] font-medium text-muted-foreground">나</span>}
-                {canEdit ? (
-                  <div className="flex gap-1">
-                    <form action={setParticipationStatusAction.bind(null, day.id, m.id, "ATTENDING")}>
-                      <button
-                        className={`btn-press rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                          m.status === "ATTENDING" ? "bg-primary text-white" : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        참여
-                      </button>
-                    </form>
-                    <form
-                      action={setParticipationStatusAction.bind(null, day.id, m.id, "NOT_ATTENDING")}
+        {visibleMembers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">해당하는 회원이 없습니다.</p>
+        ) : (
+          <AttendanceCarousel
+            key={rsvpFilter}
+            pages={chunk(visibleMembers, ATTENDANCE_PAGE_SIZE).map((pageMembers, pageIndex) => (
+              <div key={pageIndex} className="grid grid-cols-3 gap-3 sm:gap-4">
+                {pageMembers.map((m) => {
+                  const isSelf = user?.id === m.id;
+                  const canEdit = !!user && (isSelf || user.role === "ADMIN");
+                  return (
+                    <div
+                      key={m.id}
+                      className={`flex flex-col items-center gap-1.5 rounded-2xl p-2 ${
+                        isSelf ? "bg-accent/15 ring-1 ring-accent" : ""
+                      }`}
                     >
-                      <button
-                        className={`btn-press rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                          m.status === "NOT_ATTENDING"
-                            ? "bg-destructive text-white"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        불참
-                      </button>
-                    </form>
-                  </div>
-                ) : (
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${RSVP_BADGE[m.status]}`}>
-                    {RSVP_LABEL[m.status]}
-                  </span>
-                )}
+                      <PlayerBadge avatarSrc={m.avatarSrc} name={m.name} />
+                      {isSelf && <span className="text-[10px] font-medium text-muted-foreground">나</span>}
+                      {canEdit ? (
+                        <div className="flex gap-1">
+                          <form action={setParticipationStatusAction.bind(null, day.id, m.id, "ATTENDING")}>
+                            <button
+                              className={`btn-press rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                m.status === "ATTENDING"
+                                  ? "bg-primary text-white"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              참여
+                            </button>
+                          </form>
+                          <form
+                            action={setParticipationStatusAction.bind(null, day.id, m.id, "NOT_ATTENDING")}
+                          >
+                            <button
+                              className={`btn-press rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                m.status === "NOT_ATTENDING"
+                                  ? "bg-destructive text-white"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              불참
+                            </button>
+                          </form>
+                        </div>
+                      ) : (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${RSVP_BADGE[m.status]}`}
+                        >
+                          {RSVP_LABEL[m.status]}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
+            ))}
+          />
+        )}
       </section>
 
       {user && <MatchComposerPanel dayId={day.id} participants={attendingMembers} />}

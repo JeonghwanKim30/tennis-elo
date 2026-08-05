@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Avatar } from "@/components/Avatar";
-import { formatPhone } from "@/lib/phone";
+import { UserListRow } from "./UserListRow";
 
 const REMOVE_ANIMATION_MS = 200;
 
@@ -11,18 +10,8 @@ export interface ManagedUser {
   name: string;
   phone: string;
   role: "USER" | "ADMIN";
-  status: "PENDING" | "ACTIVE";
   avatarSrc: string;
 }
-
-const STATUS_LABEL: Record<ManagedUser["status"], string> = {
-  ACTIVE: "활동중",
-  PENDING: "승인 대기",
-};
-const STATUS_BADGE: Record<ManagedUser["status"], string> = {
-  ACTIVE: "bg-primary/10 text-primary",
-  PENDING: "bg-accent/30 text-accent-foreground",
-};
 
 export function UserManagementList({
   users: initialUsers,
@@ -59,38 +48,37 @@ export function UserManagementList({
         {users.map((u) => {
           const isSelf = u.id === currentAdminId;
           return (
-            <div
+            <UserListRow
               key={u.id}
-              className={`flex flex-wrap items-center gap-3 px-4 py-3 transition-all duration-200 ease-out ${
-                removingIds.has(u.id) ? "-translate-x-2 opacity-0" : "opacity-100"
-              }`}
-            >
-              <Avatar src={u.avatarSrc} size="sm" />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="truncate font-medium">{u.name}</span>
+              avatarSrc={u.avatarSrc}
+              name={u.name}
+              phone={u.phone}
+              removing={removingIds.has(u.id)}
+              badges={
+                <>
                   {isSelf && <span className="text-xs text-muted-foreground">(나)</span>}
                   {u.role === "ADMIN" && (
                     <span className="rounded-full bg-secondary/30 px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
                       관리자
                     </span>
                   )}
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_BADGE[u.status]}`}>
-                    {STATUS_LABEL[u.status]}
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                    활동중
                   </span>
-                </div>
-                <p className="truncate text-sm text-muted-foreground">{formatPhone(u.phone)}</p>
-              </div>
-              {!isSelf && (
-                <button
-                  type="button"
-                  onClick={() => setConfirmTarget(u)}
-                  className="btn-press touch-target shrink-0 rounded-full bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive"
-                >
-                  추방
-                </button>
-              )}
-            </div>
+                </>
+              }
+              actions={
+                !isSelf && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmTarget(u)}
+                    className="btn-press touch-target shrink-0 rounded-full bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive"
+                  >
+                    추방
+                  </button>
+                )
+              }
+            />
           );
         })}
         {users.length === 0 && (
