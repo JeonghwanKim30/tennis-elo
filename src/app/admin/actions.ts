@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
@@ -10,6 +11,59 @@ import type { MatchResult } from "@/generated/prisma/client";
 
 export interface MatchScoreState {
   error?: string;
+}
+
+export interface CreateDayState {
+  error?: string;
+}
+
+export async function createMatchDayAction(
+  _prevState: CreateDayState,
+  formData: FormData
+): Promise<CreateDayState> {
+  const admin = await requireAdmin();
+
+  const dateStr = formData.get("date");
+  if (typeof dateStr !== "string" || !dateStr) {
+    return { error: "날짜를 입력해주세요." };
+  }
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) {
+    return { error: "날짜가 올바르지 않습니다." };
+  }
+
+  const timeStr = formData.get("time");
+  const time = typeof timeStr === "string" && timeStr.trim() ? timeStr.trim() : null;
+  const locationStr = formData.get("location");
+  const location = typeof locationStr === "string" && locationStr.trim() ? locationStr.trim() : null;
+
+  const existing = await prisma.matchDay.findUnique({ where: { date } });
+  if (existing) {
+    redirect(`/matches/${existing.id}`);
+  }
+
+  const day = await prisma.matchDay.create({
+    data: { date, time, location, createdBy: admin.id },
+  });
+  redirect(`/matches/${day.id}`);
+}
+
+/**
+ * 회원을 추방한다 — 실제 행을 지우면 그동안의 경기 이력/ELO 히스토리까지
+ * 함께 사라지므로, 상태만 BANNED로 바꿔 로그인과 공개 목록(랭킹/참가자 추가
+ * 등)에서 제외되게 한다. 자기 자신은 추방할 수 없다.
+ */
+export async function banUserAction(userId: string) {
+  const admin = await requireAdmin();
+  if (userId === admin.id) return;
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { status: "BANNED" },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/leaderboard");
 }
 
 export async function approveUserAction(userId: string) {

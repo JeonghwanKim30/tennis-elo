@@ -19,15 +19,18 @@ export default async function LeaderboardPage({
   const genderFilter: GenderFilter = gender === "FEMALE" || gender === "MALE" ? gender : "ALL";
 
   const userSelect = { name: true, gender: true, profileImage: true, profileImageType: true } as const;
+  // 탈퇴/추방 등으로 더 이상 활성 상태가 아닌 회원은 공개 랭킹에서 제외한다
+  // (경기 이력/ELO 히스토리 자체는 그대로 보존된다).
+  const activeFilter = { user: { status: "ACTIVE" as const } };
 
   const [singles, doubles] = await Promise.all([
     prisma.eloRating.findMany({
-      where: { type: "SINGLES" },
+      where: { type: "SINGLES", ...activeFilter },
       orderBy: { rating: "desc" },
       include: { user: { select: userSelect } },
     }),
     prisma.eloRating.findMany({
-      where: { type: "DOUBLES" },
+      where: { type: "DOUBLES", ...activeFilter },
       orderBy: { rating: "desc" },
       include: { user: { select: userSelect } },
     }),
@@ -40,23 +43,31 @@ export default async function LeaderboardPage({
     <main className="mx-auto max-w-3xl space-y-10 px-4 py-12">
       <h1 className="text-2xl font-bold">리더보드</h1>
 
-      <div className="flex justify-center gap-2 sm:justify-start">
-        {GENDER_TABS.map(({ key, label }) => (
-          <Link
-            key={key}
-            href={key === "ALL" ? "/leaderboard" : `/leaderboard?gender=${key}`}
-            className={`btn-press touch-target rounded-full px-4 py-2 text-sm font-medium ${
-              genderFilter === key ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
-            }`}
-          >
-            {label}
-          </Link>
-        ))}
-      </div>
-
-      <RankingTable title="단식 랭킹" rows={filterRows(singles)} />
+      <RankingTable
+        title="단식 랭킹"
+        rows={filterRows(singles)}
+        headerExtra={<GenderTabs genderFilter={genderFilter} />}
+      />
       <RankingTable title="복식 랭킹" rows={filterRows(doubles)} />
     </main>
+  );
+}
+
+function GenderTabs({ genderFilter }: { genderFilter: GenderFilter }) {
+  return (
+    <div className="flex shrink-0 gap-2">
+      {GENDER_TABS.map(({ key, label }) => (
+        <Link
+          key={key}
+          href={key === "ALL" ? "/leaderboard" : `/leaderboard?gender=${key}`}
+          className={`btn-press touch-target rounded-full px-3 py-1.5 text-xs font-medium ${
+            genderFilter === key ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
+          }`}
+        >
+          {label}
+        </Link>
+      ))}
+    </div>
   );
 }
 
@@ -65,6 +76,7 @@ const RANK_BADGE = ["bg-gold text-accent-foreground", "bg-gray-200 text-gray-600
 function RankingTable({
   title,
   rows,
+  headerExtra,
 }: {
   title: string;
   rows: {
@@ -75,10 +87,14 @@ function RankingTable({
     draws: number;
     user: AvatarUser & { name: string };
   }[];
+  headerExtra?: React.ReactNode;
 }) {
   return (
     <section>
-      <h2 className="mb-3 text-lg font-semibold">{title}</h2>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">{title}</h2>
+        {headerExtra}
+      </div>
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">등록된 선수가 없습니다.</p>
       ) : (

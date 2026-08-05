@@ -2,10 +2,10 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { avatarSrc } from "@/lib/avatar";
 import { getCurrentUser } from "@/lib/session";
-import { CreateDayForm } from "./CreateDayForm";
 import { DayParticipantsPreview } from "./DayParticipantsPreview";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const PAGE_SIZE = 8;
 
 type Scope = "all" | "upcoming" | "past";
 const SCOPE_TABS: { key: Scope; label: string }[] = [
@@ -21,10 +21,11 @@ function dDayLabel(diffDays: number): string {
   return diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
 }
 
-function buildHref(scope: Scope, mine: boolean) {
+function buildHref(scope: Scope, mine: boolean, limit?: number) {
   const params = new URLSearchParams();
   if (scope !== "upcoming") params.set("scope", scope);
   if (mine) params.set("mine", "1");
+  if (limit && limit !== PAGE_SIZE) params.set("limit", String(limit));
   const qs = params.toString();
   return qs ? `/matches?${qs}` : "/matches";
 }
@@ -32,11 +33,13 @@ function buildHref(scope: Scope, mine: boolean) {
 export default async function MatchesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ scope?: string; mine?: string }>;
+  searchParams: Promise<{ scope?: string; mine?: string; limit?: string }>;
 }) {
-  const { scope: rawScope, mine: rawMine } = await searchParams;
+  const { scope: rawScope, mine: rawMine, limit: rawLimit } = await searchParams;
   const scope: Scope = rawScope === "all" || rawScope === "past" ? rawScope : "upcoming";
   const mineOnly = rawMine === "1";
+  const parsedLimit = Number(rawLimit);
+  const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : PAGE_SIZE;
 
   const user = await getCurrentUser();
 
@@ -70,11 +73,13 @@ export default async function MatchesPage({
 
   daysWithDiff.sort((a, b) => Math.abs(a.diffDays) - Math.abs(b.diffDays) || a.diffDays - b.diffDays);
 
+  const total = daysWithDiff.length;
+  const visibleDays = daysWithDiff.slice(0, limit);
+  const hasMore = total > visibleDays.length;
+
   return (
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-12">
       <h1 className="text-2xl font-bold">경기 목록</h1>
-
-      <CreateDayForm />
 
       <div className="space-y-3">
         <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
@@ -110,10 +115,10 @@ export default async function MatchesPage({
       </div>
 
       <ul className="space-y-3">
-        {daysWithDiff.length === 0 && (
+        {visibleDays.length === 0 && (
           <p className="text-sm text-muted-foreground">해당하는 경기일이 없습니다.</p>
         )}
-        {daysWithDiff.map((d) => {
+        {visibleDays.map((d) => {
           const attending = d.participants
             .filter((p) => p.status === "ATTENDING")
             .map((p) => ({
@@ -149,6 +154,17 @@ export default async function MatchesPage({
           );
         })}
       </ul>
+
+      {hasMore && (
+        <div className="flex justify-center">
+          <Link
+            href={buildHref(scope, mineOnly, limit + PAGE_SIZE)}
+            className="btn-press touch-target rounded-full bg-muted px-6 py-2.5 text-sm font-medium text-foreground/70"
+          >
+            더보기 ({total - visibleDays.length}개 더 있음)
+          </Link>
+        </div>
+      )}
     </main>
   );
 }

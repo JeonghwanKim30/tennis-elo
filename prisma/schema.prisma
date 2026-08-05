@@ -26,6 +26,7 @@ enum UserStatus {
   PENDING
   ACTIVE
   REJECTED
+  BANNED
 }
 
 enum MatchType {

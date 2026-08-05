@@ -5,7 +5,7 @@ import { createMatchDayAction, type CreateDayState } from "./actions";
 
 const initialState: CreateDayState = {};
 
-export function CreateDayForm() {
+export function RegisterMatchDayForm() {
   const [state, formAction, pending] = useActionState(createMatchDayAction, initialState);
 
   return (

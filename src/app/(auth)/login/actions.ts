@@ -45,6 +45,9 @@ export async function loginAction(
   if (matchedUser.status === "REJECTED") {
     return { error: "가입이 거절되었습니다. 관리자에게 문의해주세요." };
   }
+  if (matchedUser.status === "BANNED") {
+    return { error: "이용이 제한된 계정입니다. 관리자에게 문의해주세요." };
+  }
 
   const session = await getSession();
   session.userId = matchedUser.id;
