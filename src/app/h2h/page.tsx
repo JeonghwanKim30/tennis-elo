@@ -99,8 +99,8 @@ export default async function H2HPage({
             {opponentRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">완료된 경기 기록이 없습니다.</p>
             ) : (
-              <div className="surface-card overflow-hidden p-2">
-                <table className="w-full text-sm">
+              <div className="surface-card overflow-x-auto p-2">
+                <table className="w-full min-w-[20rem] text-sm">
                   <thead>
                     <tr className="text-left text-muted-foreground">
                       <th className="px-3 py-2 font-medium">상대</th>
@@ -155,12 +155,12 @@ export default async function H2HPage({
                       {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
                       {m.matchDay.date.toISOString().slice(0, 10)}
                     </p>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
                         {opponents.map((p) => (
-                          <div key={p.id} className="flex items-center gap-1">
+                          <div key={p.id} className="flex max-w-[6rem] items-center gap-1">
                             <Avatar src={p.avatarSrc} size="sm" />
-                            <span>{p.name}</span>
+                            <span className="truncate">{p.name}</span>
                           </div>
                         ))}
                       </div>

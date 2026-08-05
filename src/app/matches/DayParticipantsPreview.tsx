@@ -52,7 +52,7 @@ export function DayParticipantsPreview({ participants }: { participants: DayPart
 
   return (
     <div
-      className="relative inline-flex select-none items-center gap-2"
+      className="relative flex min-w-0 select-none items-center gap-2"
       onPointerDown={startPress}
       onPointerUp={cancelPress}
       onPointerLeave={cancelPress}
@@ -60,7 +60,7 @@ export function DayParticipantsPreview({ participants }: { participants: DayPart
       onContextMenu={(e) => e.preventDefault()}
       onClickCapture={handleClickCapture}
     >
-      <div className="flex -space-x-2">
+      <div className="flex shrink-0 -space-x-2">
         {visible.map((p) => (
           <Avatar key={p.id} src={p.avatarSrc} size="sm" className="ring-2 ring-white" />
         ))}
@@ -70,7 +70,7 @@ export function DayParticipantsPreview({ participants }: { participants: DayPart
           </div>
         )}
       </div>
-      <span className="truncate text-sm text-muted-foreground">{namesSummary}</span>
+      <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{namesSummary}</span>
 
       {showPopup && (
         <div className="surface-card absolute left-0 top-full z-20 mt-2 w-56 p-3 shadow-xl">
@@ -79,9 +79,9 @@ export function DayParticipantsPreview({ participants }: { participants: DayPart
           </p>
           <ul className="max-h-56 space-y-2 overflow-auto">
             {participants.map((p) => (
-              <li key={p.id} className="flex items-center gap-2">
+              <li key={p.id} className="flex min-w-0 items-center gap-2">
                 <Avatar src={p.avatarSrc} size="sm" />
-                <span className="text-sm">{p.name}</span>
+                <span className="min-w-0 flex-1 truncate text-sm">{p.name}</span>
               </li>
             ))}
           </ul>

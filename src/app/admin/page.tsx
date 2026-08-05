@@ -57,12 +57,15 @@ export default async function AdminPage() {
         ) : (
           <ul className="space-y-3">
             {pendingUsers.map((u) => (
-              <li key={u.id} className="surface-card flex items-center justify-between px-5 py-4">
-                <div>
-                  <p className="font-medium">{u.name}</p>
-                  <p className="text-sm text-muted-foreground">{formatPhone(u.phone)}</p>
+              <li
+                key={u.id}
+                className="surface-card flex flex-wrap items-center justify-between gap-3 px-5 py-4"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{u.name}</p>
+                  <p className="truncate text-sm text-muted-foreground">{formatPhone(u.phone)}</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex shrink-0 gap-2">
                   <form action={approveUserAction.bind(null, u.id)}>
                     <button className="btn-press touch-target rounded-full bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm shadow-primary/25">
                       승인

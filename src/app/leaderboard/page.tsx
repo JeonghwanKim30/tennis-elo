@@ -49,8 +49,8 @@ function RankingTable({
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">등록된 선수가 없습니다.</p>
       ) : (
-        <div className="surface-card overflow-hidden p-2">
-          <table className="w-full text-sm">
+        <div className="surface-card overflow-x-auto p-2">
+          <table className="w-full min-w-[24rem] text-sm">
             <thead>
               <tr className="text-left text-muted-foreground">
                 <th className="px-3 py-2 font-medium">순위</th>

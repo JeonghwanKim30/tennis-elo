@@ -66,9 +66,9 @@ export default async function ProfilePage({
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-12">
       <div className="flex items-center gap-4">
         <AvatarUploader currentSrc={avatarSrc(user)} />
-        <div>
-          <h1 className="text-2xl font-bold">{user.name}</h1>
-          <p className="text-sm text-muted-foreground">{formatPhone(user.phone)}</p>
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-bold">{user.name}</h1>
+          <p className="truncate text-sm text-muted-foreground">{formatPhone(user.phone)}</p>
         </div>
       </div>
 
