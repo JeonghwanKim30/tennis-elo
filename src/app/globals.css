@@ -110,6 +110,20 @@ textarea::placeholder {
   min-width: 44px;
 }
 
+/* 탭/필터 알약(pill) 버튼 공통 스타일. iOS Safari에서 버튼/링크 안의 텍스트가
+   기본 line-height와 폰트의 내부 여백(ascender/descender) 때문에 위아래로
+   미세하게 쏠려 보이는 문제가 있어, flex로 명시적으로 세로/가로 중앙 정렬하고
+   line-height를 1로 고정 + 자간을 기본값으로 되돌려 어느 브라우저에서도
+   글자가 버튼 정중앙에 오도록 보정한다. */
+.tab-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  line-height: 1;
+  letter-spacing: normal;
+}
+
 /* 상단 탭 메뉴처럼 가로 스크롤은 되지만 스크롤바는 안 보이게 한다. */
 .scrollbar-hide {
   scrollbar-width: none;

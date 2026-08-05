@@ -10,57 +10,81 @@ const GENDER_TABS: { key: GenderFilter; label: string }[] = [
   { key: "MALE", label: "남성" },
 ];
 
+type RankingType = "SINGLES" | "DOUBLES";
+const TYPE_TABS: { key: RankingType; label: string }[] = [
+  { key: "SINGLES", label: "단식 랭킹" },
+  { key: "DOUBLES", label: "복식 랭킹" },
+];
+
+function buildHref(type: RankingType, gender: GenderFilter) {
+  const params = new URLSearchParams();
+  if (type !== "SINGLES") params.set("type", type);
+  if (gender !== "ALL") params.set("gender", gender);
+  const qs = params.toString();
+  return qs ? `/leaderboard?${qs}` : "/leaderboard";
+}
+
 export default async function LeaderboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ gender?: string }>;
+  searchParams: Promise<{ gender?: string; type?: string }>;
 }) {
-  const { gender } = await searchParams;
+  const { gender, type } = await searchParams;
   const genderFilter: GenderFilter = gender === "FEMALE" || gender === "MALE" ? gender : "ALL";
+  const typeFilter: RankingType = type === "DOUBLES" ? "DOUBLES" : "SINGLES";
 
   const userSelect = { name: true, gender: true, profileImage: true, profileImageType: true } as const;
   // 탈퇴/추방 등으로 더 이상 활성 상태가 아닌 회원은 공개 랭킹에서 제외한다
   // (경기 이력/ELO 히스토리 자체는 그대로 보존된다).
   const activeFilter = { user: { status: "ACTIVE" as const } };
 
-  const [singles, doubles] = await Promise.all([
-    prisma.eloRating.findMany({
-      where: { type: "SINGLES", ...activeFilter },
-      orderBy: { rating: "desc" },
-      include: { user: { select: userSelect } },
-    }),
-    prisma.eloRating.findMany({
-      where: { type: "DOUBLES", ...activeFilter },
-      orderBy: { rating: "desc" },
-      include: { user: { select: userSelect } },
-    }),
-  ]);
+  const rows = await prisma.eloRating.findMany({
+    where: { type: typeFilter, ...activeFilter },
+    orderBy: { rating: "desc" },
+    include: { user: { select: userSelect } },
+  });
 
-  const filterRows = <T extends { user: { gender: string } }>(rows: T[]) =>
-    genderFilter === "ALL" ? rows : rows.filter((r) => r.user.gender === genderFilter);
+  const filterRows = <T extends { user: { gender: string } }>(rowsToFilter: T[]) =>
+    genderFilter === "ALL" ? rowsToFilter : rowsToFilter.filter((r) => r.user.gender === genderFilter);
 
   return (
-    <main className="mx-auto max-w-3xl space-y-10 px-4 py-12">
+    <main className="mx-auto max-w-3xl space-y-6 px-4 py-12">
       <h1 className="text-2xl font-bold">리더보드</h1>
 
-      <RankingTable
-        title="단식 랭킹"
-        rows={filterRows(singles)}
-        headerExtra={<GenderTabs genderFilter={genderFilter} />}
-      />
-      <RankingTable title="복식 랭킹" rows={filterRows(doubles)} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex shrink-0 gap-2">
+          {TYPE_TABS.map(({ key, label }) => (
+            <Link
+              key={key}
+              href={buildHref(key, genderFilter)}
+              aria-current={typeFilter === key ? "page" : undefined}
+              className={`tab-pill btn-press touch-target rounded-full px-4 py-2 text-sm font-medium ${
+                typeFilter === key
+                  ? "bg-primary text-white shadow-sm shadow-primary/30"
+                  : "bg-muted text-foreground/70"
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+        <GenderTabs typeFilter={typeFilter} genderFilter={genderFilter} />
+      </div>
+
+      <RankingTable title={typeFilter === "SINGLES" ? "단식 랭킹" : "복식 랭킹"} rows={filterRows(rows)} />
     </main>
   );
 }
 
-function GenderTabs({ genderFilter }: { genderFilter: GenderFilter }) {
+function GenderTabs({ typeFilter, genderFilter }: { typeFilter: RankingType; genderFilter: GenderFilter }) {
   return (
     <div className="flex shrink-0 gap-2">
       {GENDER_TABS.map(({ key, label }) => (
         <Link
           key={key}
-          href={key === "ALL" ? "/leaderboard" : `/leaderboard?gender=${key}`}
-          className={`btn-press touch-target rounded-full px-3 py-1.5 text-xs font-medium ${
+          href={buildHref(typeFilter, key)}
+          aria-current={genderFilter === key ? "page" : undefined}
+          className={`tab-pill btn-press touch-target rounded-full px-3 py-1.5 text-xs font-medium ${
             genderFilter === key ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
           }`}
         >
@@ -76,7 +100,6 @@ const RANK_BADGE = ["bg-gold text-accent-foreground", "bg-gray-200 text-gray-600
 function RankingTable({
   title,
   rows,
-  headerExtra,
 }: {
   title: string;
   rows: {
@@ -87,14 +110,10 @@ function RankingTable({
     draws: number;
     user: AvatarUser & { name: string };
   }[];
-  headerExtra?: React.ReactNode;
 }) {
   return (
     <section>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        {headerExtra}
-      </div>
+      <h2 className="mb-3 text-lg font-semibold">{title}</h2>
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">등록된 선수가 없습니다.</p>
       ) : (

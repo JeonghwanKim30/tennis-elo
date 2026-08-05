@@ -201,7 +201,7 @@ function TabLink({ tab, current, label }: { tab: Tab; current: Tab; label: strin
   return (
     <Link
       href={href}
-      className={`btn-press touch-target rounded-full px-4 py-2 text-sm font-medium ${
+      className={`tab-pill btn-press touch-target rounded-full px-4 py-2 text-sm font-medium ${
         isActive ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
       }`}
     >

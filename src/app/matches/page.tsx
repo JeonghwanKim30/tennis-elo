@@ -79,16 +79,15 @@ export default async function MatchesPage({
 
   return (
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-12">
-      <h1 className="text-2xl font-bold">경기 목록</h1>
-
-      <div className="space-y-3">
-        <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <h1 className="text-2xl font-bold">경기 목록</h1>
+        <div className="flex flex-wrap justify-end gap-2">
           {SCOPE_TABS.map(({ key, label }) => (
             <Link
               key={key}
               href={buildHref(key, mineOnly)}
               aria-current={scope === key ? "page" : undefined}
-              className={`btn-press touch-target rounded-full px-4 py-2 text-sm font-medium ${
+              className={`tab-pill btn-press touch-target rounded-full px-4 py-2 text-sm font-medium ${
                 scope === key ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
               }`}
             >
@@ -96,12 +95,15 @@ export default async function MatchesPage({
             </Link>
           ))}
         </div>
+      </div>
+
+      <div className="space-y-3">
         {user && (
           <div className="flex justify-center sm:justify-start">
             <Link
               href={buildHref(scope, !mineOnly)}
               aria-pressed={mineOnly}
-              className={`btn-press touch-target rounded-full px-4 py-2 text-xs font-medium ${
+              className={`tab-pill btn-press touch-target rounded-full px-4 py-2 text-xs font-medium ${
                 mineOnly ? "bg-accent/40 text-accent-foreground" : "bg-muted text-foreground/70"
               }`}
             >

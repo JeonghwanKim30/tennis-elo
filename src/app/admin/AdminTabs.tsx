@@ -20,7 +20,7 @@ export function AdminTabs({ active }: { active: AdminTab }) {
           key={key}
           href={key === "register" ? "/admin" : `/admin?tab=${key}`}
           aria-current={active === key ? "page" : undefined}
-          className={`btn-press touch-target shrink-0 rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${
+          className={`tab-pill btn-press touch-target shrink-0 rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${
             active === key ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
           }`}
         >

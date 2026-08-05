@@ -26,7 +26,7 @@ export function NavTabs({ items }: { items: NavTabItem[] }) {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className={`btn-press touch-target flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
+            className={`tab-pill btn-press touch-target shrink-0 rounded-full px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
               active
                 ? "bg-primary text-white shadow-sm shadow-primary/30"
                 : "bg-muted text-foreground/70"

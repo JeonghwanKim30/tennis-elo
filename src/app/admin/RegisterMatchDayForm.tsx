@@ -9,39 +9,39 @@ export function RegisterMatchDayForm() {
   const [state, formAction, pending] = useActionState(createMatchDayAction, initialState);
 
   return (
-    <form action={formAction} className="surface-card flex flex-wrap items-end gap-3 p-4">
-      <div className="min-w-[9rem] flex-1">
+    <form action={formAction} className="surface-card flex w-full max-w-full flex-col gap-3 p-4 md:flex-row md:flex-wrap md:items-end">
+      <div className="w-full max-w-full md:min-w-[9rem] md:flex-1">
         <label className="block text-xs font-medium text-muted-foreground">날짜</label>
         <input
           name="date"
           type="date"
           required
           defaultValue={new Date().toISOString().slice(0, 10)}
-          className="mt-1 w-full rounded-xl border border-border px-3 py-2 text-sm"
+          className="mt-1 w-full max-w-full appearance-none rounded-xl border border-border px-3 py-2 text-sm"
         />
       </div>
-      <div className="min-w-[7rem] flex-1">
+      <div className="w-full max-w-full md:min-w-[7rem] md:flex-1">
         <label className="block text-xs font-medium text-muted-foreground">시간</label>
         <input
           name="time"
           type="time"
-          className="mt-1 w-full rounded-xl border border-border px-3 py-2 text-sm"
+          className="mt-1 w-full max-w-full appearance-none rounded-xl border border-border px-3 py-2 text-sm"
         />
       </div>
-      <div className="min-w-[9rem] flex-[2]">
+      <div className="w-full max-w-full md:min-w-[9rem] md:flex-[2]">
         <label className="block text-xs font-medium text-muted-foreground">장소</label>
         <input
           name="location"
           type="text"
           placeholder="예: 올림픽공원 테니스장"
           maxLength={100}
-          className="mt-1 w-full rounded-xl border border-border px-3 py-2 text-sm"
+          className="mt-1 w-full max-w-full appearance-none rounded-xl border border-border px-3 py-2 text-sm"
         />
       </div>
       <button
         type="submit"
         disabled={pending}
-        className="btn-press lift-on-hover touch-target shrink-0 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-white shadow-md shadow-primary/25 disabled:opacity-50"
+        className="btn-press lift-on-hover touch-target w-full max-w-full shrink-0 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-white shadow-md shadow-primary/25 disabled:opacity-50 md:w-auto"
       >
         {pending ? "생성 중..." : "+ 경기일 등록"}
       </button>
