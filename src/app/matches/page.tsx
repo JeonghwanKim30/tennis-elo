@@ -6,8 +6,8 @@ import { DayParticipantsPreview } from "./DayParticipantsPreview";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// "오늘"과 날짜 차이가 클수록 먼저 보이도록(과거·미래 상관없이 오늘에서
-// 멀리 떨어진 경기일이 위로) 정렬 기준을 명확히 보여주는 D-day 라벨.
+// "오늘"과 날짜 차이가 작을수록 먼저 보이도록(과거·미래 상관없이 오늘과
+// 가까운 경기일이 위로) 정렬 기준을 명확히 보여주는 D-day 라벨.
 function dDayLabel(diffDays: number): string {
   if (diffDays === 0) return "오늘";
   return diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
@@ -31,7 +31,7 @@ export default async function MatchesPage() {
   const today = new Date(new Date().toISOString().slice(0, 10));
   const daysWithDiff = days
     .map((d) => ({ ...d, diffDays: Math.round((d.date.getTime() - today.getTime()) / DAY_MS) }))
-    .sort((a, b) => Math.abs(b.diffDays) - Math.abs(a.diffDays) || b.diffDays - a.diffDays);
+    .sort((a, b) => Math.abs(a.diffDays) - Math.abs(b.diffDays) || a.diffDays - b.diffDays);
 
   return (
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-12">
@@ -39,7 +39,7 @@ export default async function MatchesPage() {
 
       <CreateDayForm />
 
-      <p className="text-xs text-muted-foreground">오늘과 날짜 차이가 큰 경기일 순으로 정렬됩니다.</p>
+      <p className="text-xs text-muted-foreground">오늘과 날짜 차이가 가까운 경기일 순으로 정렬됩니다.</p>
 
       <ul className="space-y-3">
         {daysWithDiff.length === 0 && (

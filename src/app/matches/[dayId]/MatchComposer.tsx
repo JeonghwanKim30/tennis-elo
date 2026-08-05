@@ -77,7 +77,7 @@ export function MatchComposer({
             setType(e.target.value as MatchType);
             setSlots(EMPTY_SLOTS);
           }}
-          className="mt-1 rounded-xl border border-border px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-xl border border-border px-3 py-2 text-sm"
         >
           <option value="SINGLES">단식</option>
           <option value="DOUBLES">복식</option>

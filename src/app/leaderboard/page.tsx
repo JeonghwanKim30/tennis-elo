@@ -49,44 +49,30 @@ function RankingTable({
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">등록된 선수가 없습니다.</p>
       ) : (
-        <div className="surface-card overflow-x-auto p-2">
-          <table className="w-full min-w-[24rem] text-sm">
-            <thead>
-              <tr className="text-left text-muted-foreground">
-                <th className="px-3 py-2 font-medium">순위</th>
-                <th className="font-medium">이름</th>
-                <th className="font-medium">ELO</th>
-                <th className="font-medium">전적</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => (
-                <tr key={r.userId} className="border-t border-border first:border-t-0">
-                  <td className="px-3 py-2.5">
-                    <span
-                      className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
-                        i < 3 ? RANK_BADGE[i] : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {i + 1}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <Avatar src={avatarSrc(r.user)} size="sm" />
-                      <span>{r.user.name}</span>
-                    </div>
-                  </td>
-                  <td className="font-display text-base font-semibold text-primary">
-                    {Math.round(r.rating)}
-                  </td>
-                  <td className="text-muted-foreground">
-                    {r.wins}승 {r.losses}패 {r.draws}무
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        // 표 대신 줄바꿈 가능한 행으로 구성해, 좁은 화면에서 열이 잘리거나
+        // 가로 스크롤이 필요해지는 대신 내용이 자연스럽게 다음 줄로 넘어가게 한다.
+        <div className="surface-card divide-y divide-border">
+          {rows.map((r, i) => (
+            <div key={r.userId} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+              <span
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm leading-none font-bold ${
+                  i < 3 ? RANK_BADGE[i] : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {i + 1}
+              </span>
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <Avatar src={avatarSrc(r.user)} size="sm" />
+                <span className="min-w-0 truncate font-medium">{r.user.name}</span>
+              </div>
+              <span className="font-display shrink-0 text-lg leading-none font-semibold text-primary">
+                {Math.round(r.rating)}
+              </span>
+              <span className="w-full shrink-0 pl-11 text-sm leading-relaxed text-muted-foreground sm:w-auto sm:pl-0">
+                {r.wins}승 {r.losses}패 {r.draws}무
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </section>

@@ -99,37 +99,31 @@ export default async function H2HPage({
             {opponentRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">완료된 경기 기록이 없습니다.</p>
             ) : (
-              <div className="surface-card overflow-x-auto p-2">
-                <table className="w-full min-w-[20rem] text-sm">
-                  <thead>
-                    <tr className="text-left text-muted-foreground">
-                      <th className="px-3 py-2 font-medium">상대</th>
-                      <th className="font-medium">전적</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {opponentRows.map((row) => {
-                      const opponent = playerById.get(row.opponentId);
-                      return (
-                        <tr key={row.opponentId} className="border-t border-border first:border-t-0">
-                          <td className="px-3 py-2.5">
-                            {opponent ? (
-                              <div className="flex items-center gap-2">
-                                <Avatar src={opponent.avatarSrc} size="sm" />
-                                <span>{opponent.name}</span>
-                              </div>
-                            ) : (
-                              "?"
-                            )}
-                          </td>
-                          <td className="text-foreground/80">
-                            {row.wins}승 {row.draws}무 {row.losses}패 (총 {row.total}경기)
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              // 표 대신 줄바꿈 가능한 행으로 구성해 좁은 화면에서 글자가 잘리지 않게 한다.
+              <div className="surface-card divide-y divide-border">
+                {opponentRows.map((row) => {
+                  const opponent = playerById.get(row.opponentId);
+                  return (
+                    <div
+                      key={row.opponentId}
+                      className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3"
+                    >
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        {opponent ? (
+                          <>
+                            <Avatar src={opponent.avatarSrc} size="sm" />
+                            <span className="min-w-0 truncate font-medium">{opponent.name}</span>
+                          </>
+                        ) : (
+                          <span>?</span>
+                        )}
+                      </div>
+                      <span className="w-full shrink-0 pl-11 text-sm leading-relaxed text-foreground/80 sm:w-auto sm:pl-0">
+                        {row.wins}승 {row.draws}무 {row.losses}패 (총 {row.total}경기)
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>
