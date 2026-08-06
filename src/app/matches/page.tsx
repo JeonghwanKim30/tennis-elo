@@ -46,7 +46,6 @@ export default async function MatchesPage({
   const days = await prisma.matchDay.findMany({
     orderBy: { date: "desc" },
     include: {
-      _count: { select: { matches: true } },
       participants: {
         include: {
           user: {
@@ -80,15 +79,15 @@ export default async function MatchesPage({
   return (
     <main className="mx-auto max-w-2xl space-y-6 px-4 py-8">
       <div className="space-y-3">
-        <div className="flex flex-row flex-wrap items-center justify-between gap-2">
-          <h1 className="shrink-0 text-2xl font-bold whitespace-nowrap">경기 목록</h1>
-          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+        <div className="flex w-full flex-nowrap items-center justify-between gap-2">
+          <h1 className="shrink-0 text-xl font-bold whitespace-nowrap sm:text-2xl">경기 목록</h1>
+          <div className="flex flex-nowrap items-center justify-end gap-1 sm:gap-2">
             {SCOPE_TABS.map(({ key, label }) => (
               <Link
                 key={key}
                 href={buildHref(key, mineOnly)}
                 aria-current={scope === key ? "page" : undefined}
-                className={`tab-pill btn-press touch-target rounded-full px-2.5 py-1 text-xs font-medium sm:px-3 sm:py-1.5 sm:text-sm ${
+                className={`tab-pill btn-press touch-target rounded-full px-2 py-1 text-[11px] font-medium whitespace-nowrap sm:px-3 sm:py-1.5 sm:text-sm ${
                   scope === key ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
                 }`}
               >
@@ -134,21 +133,16 @@ export default async function MatchesPage({
                 href={`/matches/${d.id}`}
                 className="btn-press surface-card block space-y-2.5 px-5 py-4"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <span className="truncate font-medium">{d.date.toISOString().slice(0, 10)}</span>
-                    <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                      {dDayLabel(d.diffDays)}
-                    </span>
-                    {(d.time || d.location) && (
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {[d.time, d.location].filter(Boolean).join(" · ")}
-                      </span>
-                    )}
-                  </div>
-                  <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                    경기 {d._count.matches}건
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="truncate font-medium">{d.date.toISOString().slice(0, 10)}</span>
+                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                    {dDayLabel(d.diffDays)}
                   </span>
+                  {(d.time || d.location) && (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {[d.time, d.location].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
                 </div>
                 <DayParticipantsPreview participants={attending} />
               </Link>
