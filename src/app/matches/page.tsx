@@ -21,9 +21,17 @@ function dDayLabel(diffDays: number): string {
   return diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
 }
 
+// "내가 참여하는 경기만" 필터가 꺼져 있을 때는 지금까지처럼 "다가오는 경기"가
+// 기본값이지만, 필터가 켜져 있을 때는 "전체 경기"가 기본값이다 — 그렇지 않으면
+// 사용자가 참여 중인 지난 경기일이 scope=upcoming과 암묵적으로 AND 결합되어
+// 조용히 목록에서 빠지는 문제가 있었다(아래 필터링 로직 참고).
+function defaultScopeFor(mine: boolean): Scope {
+  return mine ? "all" : "upcoming";
+}
+
 function buildHref(scope: Scope, mine: boolean, limit?: number) {
   const params = new URLSearchParams();
-  if (scope !== "upcoming") params.set("scope", scope);
+  if (scope !== defaultScopeFor(mine)) params.set("scope", scope);
   if (mine) params.set("mine", "1");
   if (limit && limit !== PAGE_SIZE) params.set("limit", String(limit));
   const qs = params.toString();
@@ -36,8 +44,9 @@ export default async function MatchesPage({
   searchParams: Promise<{ scope?: string; mine?: string; limit?: string }>;
 }) {
   const { scope: rawScope, mine: rawMine, limit: rawLimit } = await searchParams;
-  const scope: Scope = rawScope === "all" || rawScope === "past" ? rawScope : "upcoming";
   const mineOnly = rawMine === "1";
+  const explicitScope = rawScope === "all" || rawScope === "upcoming" || rawScope === "past";
+  const scope: Scope = explicitScope ? (rawScope as Scope) : defaultScopeFor(mineOnly);
   const parsedLimit = Number(rawLimit);
   const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : PAGE_SIZE;
 
@@ -57,23 +66,26 @@ export default async function MatchesPage({
   });
 
   const today = new Date(new Date().toISOString().slice(0, 10));
-  let daysWithDiff = days.map((d) => ({
+  const daysWithDiff = days.map((d) => ({
     ...d,
     diffDays: Math.round((d.date.getTime() - today.getTime()) / DAY_MS),
   }));
 
-  if (scope === "upcoming") daysWithDiff = daysWithDiff.filter((d) => d.diffDays >= 0);
-  if (scope === "past") daysWithDiff = daysWithDiff.filter((d) => d.diffDays < 0);
-  if (mineOnly && user) {
-    daysWithDiff = daysWithDiff.filter((d) =>
-      d.participants.some((p) => p.userId === user.id && p.status === "ATTENDING")
-    );
-  }
+  // 선(先) "내가 참여하는 경기" 필터 -> 후(後) 날짜 범위(scope) 필터 순으로 적용한다.
+  // 참여 필터를 먼저 걸어 로그인한 유저가 ATTENDING으로 응답한 경기일을 전부
+  // 추려낸 뒤에만 scope로 좁히므로, mine=1인데 scope가 명시되지 않은 경우
+  // (기본값이 "전체 경기"로 바뀐다) 지난 경기든 다가오는 경기든 빠짐없이 보인다.
+  let filteredDays = mineOnly && user
+    ? daysWithDiff.filter((d) => d.participants.some((p) => p.userId === user.id && p.status === "ATTENDING"))
+    : daysWithDiff;
 
-  daysWithDiff.sort((a, b) => Math.abs(a.diffDays) - Math.abs(b.diffDays) || a.diffDays - b.diffDays);
+  if (scope === "upcoming") filteredDays = filteredDays.filter((d) => d.diffDays >= 0);
+  if (scope === "past") filteredDays = filteredDays.filter((d) => d.diffDays < 0);
 
-  const total = daysWithDiff.length;
-  const visibleDays = daysWithDiff.slice(0, limit);
+  filteredDays.sort((a, b) => Math.abs(a.diffDays) - Math.abs(b.diffDays) || a.diffDays - b.diffDays);
+
+  const total = filteredDays.length;
+  const visibleDays = filteredDays.slice(0, limit);
   const hasMore = total > visibleDays.length;
 
   return (
@@ -99,8 +111,14 @@ export default async function MatchesPage({
 
         {user && (
           <div className="flex justify-center sm:justify-start">
+            {/*
+              필터를 켤 때는 현재 선택된 scope 탭을 그대로 들고 가지 않고 항상
+              "전체 경기"로 초기화한다 — 그렇지 않으면 "다가오는 경기" 탭에
+              머문 채로 필터를 켰을 때 이미 참여 중인 지난 경기일이 조용히
+              가려지는 문제가 있었다. 끌 때는 보고 있던 scope를 그대로 유지한다.
+            */}
             <Link
-              href={buildHref(scope, !mineOnly)}
+              href={mineOnly ? buildHref(scope, false) : buildHref("all", true)}
               aria-pressed={mineOnly}
               className={`tab-pill btn-press touch-target rounded-full px-4 py-2 text-xs font-medium ${
                 mineOnly ? "bg-accent/40 text-accent-foreground" : "bg-muted text-foreground/70"
