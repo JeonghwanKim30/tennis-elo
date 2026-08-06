@@ -22,17 +22,13 @@ function dDayLabel(diffDays: number): string {
   return diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
 }
 
-// "내가 참여하는 경기만" 필터가 꺼져 있을 때는 지금까지처럼 "다가오는 경기"가
-// 기본값이지만, 필터가 켜져 있을 때는 "전체 경기"가 기본값이다 — 그렇지 않으면
-// 사용자가 참여 중인 지난 경기일이 scope=upcoming과 암묵적으로 AND 결합되어
-// 조용히 목록에서 빠지는 문제가 있었다(아래 필터링 로직 참고).
-function defaultScopeFor(mine: boolean): Scope {
-  return mine ? "all" : "upcoming";
-}
-
+// tabFilter(scope)와 isMyOnly(mine)는 서로 완전히 독립적인 상태다 — 한쪽을
+// 바꾼다고 다른 쪽 값을 절대 바꾸거나 초기화하지 않는다("다가오는 경기" 탭에
+// 머문 채로 필터를 켜고 꺼도 탭이 "전체 경기"로 튕기지 않아야 함). "다가오는
+// 경기"가 기본값이라 URL에서는 생략된다.
 function buildHref(scope: Scope, mine: boolean, limit?: number) {
   const params = new URLSearchParams();
-  if (scope !== defaultScopeFor(mine)) params.set("scope", scope);
+  if (scope !== "upcoming") params.set("scope", scope);
   if (mine) params.set("mine", "1");
   if (limit && limit !== PAGE_SIZE) params.set("limit", String(limit));
   const qs = params.toString();
@@ -46,8 +42,7 @@ export default async function MatchesPage({
 }) {
   const { scope: rawScope, mine: rawMine, limit: rawLimit } = await searchParams;
   const mineOnly = rawMine === "1";
-  const explicitScope = rawScope === "all" || rawScope === "upcoming" || rawScope === "past";
-  const scope: Scope = explicitScope ? (rawScope as Scope) : defaultScopeFor(mineOnly);
+  const scope: Scope = rawScope === "all" || rawScope === "past" ? rawScope : "upcoming";
   const parsedLimit = Number(rawLimit);
   const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : PAGE_SIZE;
 
@@ -72,10 +67,10 @@ export default async function MatchesPage({
     diffDays: Math.round((d.date.getTime() - today.getTime()) / DAY_MS),
   }));
 
-  // 선(先) "내가 참여하는 경기" 필터 -> 후(後) 날짜 범위(scope) 필터 순으로 적용한다.
-  // 참여 필터를 먼저 걸어 로그인한 유저가 ATTENDING으로 응답한 경기일을 전부
-  // 추려낸 뒤에만 scope로 좁히므로, mine=1인데 scope가 명시되지 않은 경우
-  // (기본값이 "전체 경기"로 바뀐다) 지난 경기든 다가오는 경기든 빠짐없이 보인다.
+  // 1차: "내가 참여하는 경기만"(mine) 필터 -> 2차: 탭(scope) 필터. 두 필터는
+  // 서로 독립적인 조건이고 그 결과를 교집합(AND)으로 합칠 뿐, 어느 쪽도 다른
+  // 쪽의 값을 바꾸지 않는다 — 예: "다가오는 경기" 탭 + mine=1이면 "다가오는
+  // 경기 중 내가 참여하는 경기"만 남고, 탭 선택은 그대로 유지된다.
   let filteredDays = mineOnly && user
     ? daysWithDiff.filter((d) => d.participants.some((p) => p.userId === user.id && p.status === "ATTENDING"))
     : daysWithDiff;
@@ -112,14 +107,9 @@ export default async function MatchesPage({
 
         {user && (
           <div className="flex justify-center sm:justify-start">
-            {/*
-              필터를 켤 때는 현재 선택된 scope 탭을 그대로 들고 가지 않고 항상
-              "전체 경기"로 초기화한다 — 그렇지 않으면 "다가오는 경기" 탭에
-              머문 채로 필터를 켰을 때 이미 참여 중인 지난 경기일이 조용히
-              가려지는 문제가 있었다. 끌 때는 보고 있던 scope를 그대로 유지한다.
-            */}
+            {/* scope는 그대로 두고 mine만 뒤집는다 — 탭 선택은 절대 건드리지 않는다. */}
             <Link
-              href={mineOnly ? buildHref(scope, false) : buildHref("all", true)}
+              href={buildHref(scope, !mineOnly)}
               aria-pressed={mineOnly}
               className={`tab-pill btn-press touch-target rounded-full px-4 py-2 text-xs font-medium ${
                 mineOnly ? "bg-accent/40 text-accent-foreground" : "bg-muted text-foreground/70"
