@@ -38,7 +38,9 @@ export default async function PublicProfilePage({
   const ratings = await prisma.eloRating.findMany({ where: { userId } });
   const singles = ratings.find((r) => r.type === "SINGLES");
   const doubles = ratings.find((r) => r.type === "DOUBLES");
-  const tierRating = ((singles?.rating ?? 1200) + (doubles?.rating ?? 1200)) / 2;
+  // 이름 옆 대표 티어는 단식/복식 중 더 높은 쪽 ELO 기준(종목별 세부 티어는
+  // ProfileStats의 ELO 카드에 따로 표시된다). /profile의 본인 프로필과 동일한 규칙.
+  const tierRating = Math.max(singles?.rating ?? 1200, doubles?.rating ?? 1200);
 
   const typeFilter = tab === "singles" ? "SINGLES" : tab === "doubles" ? "DOUBLES" : undefined;
 

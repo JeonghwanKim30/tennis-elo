@@ -3,10 +3,12 @@ import { requireUser } from "@/lib/session";
 import { avatarSrc } from "@/lib/avatar";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { TierBadge } from "@/components/TierBadge";
+import { getTier, compareTierChange } from "@/lib/tier";
 import { AvatarUploader } from "./AvatarUploader";
 import { BioEditor } from "./BioEditor";
 import { PhoneEditor } from "./PhoneEditor";
 import { ProfileStats } from "./ProfileStats";
+import { TierChangeBanner } from "./TierChangeBanner";
 
 type Tab = "all" | "singles" | "doubles";
 
@@ -22,8 +24,18 @@ export default async function ProfilePage({
   const ratings = await prisma.eloRating.findMany({ where: { userId: user.id } });
   const singles = ratings.find((r) => r.type === "SINGLES");
   const doubles = ratings.find((r) => r.type === "DOUBLES");
-  // 티어는 단식/복식 ELO 평균을 기준으로 매긴다(둘 중 하나만 있어도 미기록 쪽은 1200 기본값 취급).
-  const tierRating = ((singles?.rating ?? 1200) + (doubles?.rating ?? 1200)) / 2;
+  // 이름 옆 대표 티어는 단식/복식 중 더 높은 쪽 ELO를 기준으로 매긴다
+  // (리그 오브 레전드의 "피크 랭크"처럼, 두 종목 중 더 잘하는 쪽을 대표로 보여준다).
+  // 종목별 세부 티어는 ProfileStats의 단식/복식 ELO 카드에 각각 따로 표시된다.
+  const tierRating = Math.max(singles?.rating ?? 1200, doubles?.rating ?? 1200);
+
+  // 마지막으로 확인한 티어와 지금 티어를 비교해 승급/강등 여부를 판단한다.
+  // 경기 승패 입력(enterMatchScoreAction) -> ELO 반영은 이미 끝난 상태이고,
+  // "그 유저가 내 프로필에 들어갔을 때" 알려주면 되므로 여기서만 계산하면 된다.
+  const currentSinglesTier = getTier(singles?.rating ?? 1200);
+  const currentDoublesTier = getTier(doubles?.rating ?? 1200);
+  const singlesTierChange = compareTierChange(user.lastSeenTierSingles, currentSinglesTier);
+  const doublesTierChange = compareTierChange(user.lastSeenTierDoubles, currentDoublesTier);
 
   const typeFilter = tab === "singles" ? "SINGLES" : tab === "doubles" ? "DOUBLES" : undefined;
 
@@ -75,6 +87,13 @@ export default async function ProfilePage({
           </div>
         </div>
       </div>
+
+      <TierChangeBanner
+        singlesChange={singlesTierChange}
+        doublesChange={doublesTierChange}
+        currentSinglesKey={currentSinglesTier.key}
+        currentDoublesKey={currentDoublesTier.key}
+      />
 
       <BioEditor initialBio={user.bio ?? ""} />
 

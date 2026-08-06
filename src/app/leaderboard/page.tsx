@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Avatar } from "@/components/Avatar";
+import { TierBadge } from "@/components/TierBadge";
 import { avatarSrc, type AvatarUser } from "@/lib/avatar";
+import { getTier } from "@/lib/tier";
 
 type GenderFilter = "ALL" | "FEMALE" | "MALE";
 const GENDER_TABS: { key: GenderFilter; label: string }[] = [
@@ -135,6 +137,7 @@ function RankingTable({
               >
                 <Avatar src={avatarSrc(r.user)} size="sm" />
                 <span className="min-w-0 truncate font-medium">{r.user.name}</span>
+                <TierBadge tier={getTier(r.rating)} size="sm" />
               </Link>
               <span className="font-display shrink-0 text-lg leading-none font-semibold text-primary">
                 {Math.round(r.rating)}

@@ -66,6 +66,10 @@ model User {
   createdAt        DateTime   @default(now())
   approvedAt       DateTime?
   approvedBy       String?
+  // 마지막으로 본인 프로필에서 "확인한" 티어(TierKey 문자열, 예: "GOLD"). 이후 경기
+  // 결과로 티어가 바뀌면 다음 프로필 방문 시 승급/강등 안내를 보여주고 이 값을 갱신한다.
+  lastSeenTierSingles String?
+  lastSeenTierDoubles String?
 
   ratings                EloRating[]
   submittedMatches       Match[]               @relation("SubmittedMatches")

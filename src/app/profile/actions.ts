@@ -104,3 +104,15 @@ export async function updatePhoneAction(
   revalidatePath("/profile");
   return { success: true, phone };
 }
+
+/**
+ * 승급/강등 안내 배너를 화면에 띄운 직후 호출해, "마지막으로 확인한 티어"를
+ * 지금 티어로 갱신한다 — 그래야 같은 변화를 다음 방문 때 또 알리지 않는다.
+ */
+export async function markTierSeenAction(singlesTierKey: string, doublesTierKey: string) {
+  const user = await requireUser();
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastSeenTierSingles: singlesTierKey, lastSeenTierDoubles: doublesTierKey },
+  });
+}

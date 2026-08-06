@@ -1,5 +1,6 @@
 import { PlayerBadge } from "@/components/PlayerBadge";
 import type { MatchType } from "@/generated/prisma/client";
+import type { Tier } from "@/lib/tier";
 
 export interface TeamPlayer {
   id: string;
@@ -28,12 +29,17 @@ export function TeamBadges({
   player1,
   player2,
   eloChange,
+  player1Tier,
+  player2Tier,
 }: {
   type: MatchType;
   player1: TeamPlayer;
   player2?: TeamPlayer | null;
   /** 완료된 경기에서만 존재 — 복식은 팀원 두 명에게 동일하게 적용된 값이다. */
   eloChange?: number | null;
+  /** 해당 경기 종목(단식/복식) 기준 각 선수의 현재 티어 — 있으면 아바타에 색 링으로 표시. */
+  player1Tier?: Tier;
+  player2Tier?: Tier;
 }) {
   const showElo = eloChange !== undefined && eloChange !== null;
 
@@ -42,7 +48,7 @@ export function TeamBadges({
       {/* 단식은 선수 1명 — 프로필 우측에 배지를 놓는다. */}
       {type === "SINGLES" && (
         <div className="flex items-center gap-1.5">
-          <PlayerBadge avatarSrc={player1.avatarSrc} name={player1.name} userId={player1.id} />
+          <PlayerBadge avatarSrc={player1.avatarSrc} name={player1.name} userId={player1.id} tier={player1Tier} />
           {showElo && <EloChangeBadge value={eloChange} />}
         </div>
       )}
@@ -53,7 +59,7 @@ export function TeamBadges({
         <div className="flex items-center gap-1.5">
           {showElo && <EloChangeBadge value={eloChange} />}
           <div className="flex flex-col items-center gap-1">
-            <PlayerBadge avatarSrc={player1.avatarSrc} name={player1.name} userId={player1.id} />
+            <PlayerBadge avatarSrc={player1.avatarSrc} name={player1.name} userId={player1.id} tier={player1Tier} />
             <span className="text-xs text-muted-foreground">포핸드</span>
           </div>
         </div>
@@ -61,7 +67,7 @@ export function TeamBadges({
       {type === "DOUBLES" && player2 && (
         <div className="flex items-center gap-1.5">
           <div className="flex flex-col items-center gap-1">
-            <PlayerBadge avatarSrc={player2.avatarSrc} name={player2.name} userId={player2.id} />
+            <PlayerBadge avatarSrc={player2.avatarSrc} name={player2.name} userId={player2.id} tier={player2Tier} />
             <span className="text-xs text-muted-foreground">백핸드</span>
           </div>
           {showElo && <EloChangeBadge value={eloChange} />}

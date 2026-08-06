@@ -7,7 +7,8 @@ import { RESULT_LABEL } from "@/lib/matchDisplay";
 import { PlayerBadge } from "@/components/PlayerBadge";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { MatchupRow } from "@/components/MatchupRow";
-import type { ParticipationStatus } from "@/generated/prisma/client";
+import { getTier, type Tier } from "@/lib/tier";
+import type { MatchType, ParticipationStatus } from "@/generated/prisma/client";
 import { MatchComposerPanel } from "./MatchComposerPanel";
 import { AttendanceCarousel } from "./AttendanceCarousel";
 import { setParticipationStatusAction } from "./actions";
@@ -75,6 +76,16 @@ export default async function MatchDayPage({
   }));
   const playerById = new Map(members.map((m) => [m.id, m]));
   const attendingMembers: TeamPlayer[] = members.filter((m) => m.status === "ATTENDING");
+
+  // 경기 카드에 선수별(단식/복식 종목에 맞는) 현재 티어를 색 링으로 보여주기 위해
+  // 이 날짜에 등장하는 모든 회원의 EloRating을 미리 조회해둔다.
+  const eloRatings = await prisma.eloRating.findMany({
+    where: { userId: { in: members.map((m) => m.id) } },
+  });
+  const ratingByUserType = new Map(eloRatings.map((r) => [`${r.userId}_${r.type}`, r.rating]));
+  function tierFor(userId: string, type: MatchType): Tier {
+    return getTier(ratingByUserType.get(`${userId}_${type}`) ?? 1200);
+  }
 
   const scheduled = day.matches.filter((m) => m.status === "PENDING");
   const completed = day.matches.filter((m) => m.status === "APPROVED");
@@ -201,7 +212,17 @@ export default async function MatchDayPage({
                   <p className="mb-2 text-sm text-muted-foreground">
                     {m.type === "SINGLES" ? "단식" : "복식"} · 점수 입력 대기 중
                   </p>
-                  <MatchupRow type={m.type} teamA1={a1} teamA2={a2} teamB1={b1} teamB2={b2} />
+                  <MatchupRow
+                    type={m.type}
+                    teamA1={a1}
+                    teamA2={a2}
+                    teamB1={b1}
+                    teamB2={b2}
+                    teamA1Tier={tierFor(a1.id, m.type)}
+                    teamA2Tier={a2 ? tierFor(a2.id, m.type) : undefined}
+                    teamB1Tier={tierFor(b1.id, m.type)}
+                    teamB2Tier={b2 ? tierFor(b2.id, m.type) : undefined}
+                  />
                 </li>
               );
             })}
@@ -234,6 +255,10 @@ export default async function MatchDayPage({
                     teamB2={b2}
                     teamAEloChange={m.teamAEloChange}
                     teamBEloChange={m.teamBEloChange}
+                    teamA1Tier={tierFor(a1.id, m.type)}
+                    teamA2Tier={a2 ? tierFor(a2.id, m.type) : undefined}
+                    teamB1Tier={tierFor(b1.id, m.type)}
+                    teamB2Tier={b2 ? tierFor(b2.id, m.type) : undefined}
                     center={
                       <span className="font-medium">
                         {m.result ? RESULT_LABEL[m.result] : ""}
