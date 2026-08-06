@@ -8,9 +8,11 @@ import { PlayerBadge } from "@/components/PlayerBadge";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { MatchupRow } from "@/components/MatchupRow";
 import { getTier, type Tier } from "@/lib/tier";
+import { computeDailyMvp } from "@/lib/mvp";
 import type { MatchType, ParticipationStatus } from "@/generated/prisma/client";
 import { MatchComposerPanel } from "./MatchComposerPanel";
 import { AttendanceCarousel } from "./AttendanceCarousel";
+import { MvpModal } from "./MvpModal";
 import { setParticipationStatusAction } from "./actions";
 
 const RSVP_LABEL: Record<ParticipationStatus, string> = {
@@ -89,6 +91,18 @@ export default async function MatchDayPage({
 
   const scheduled = day.matches.filter((m) => m.status === "PENDING");
   const completed = day.matches.filter((m) => m.status === "APPROVED");
+
+  // 오늘의 MVP — 그날 완료된 경기들의 순 ELO 상승량 합계가 가장 높은 유저.
+  const mvpResult = computeDailyMvp(completed);
+  const mvp = mvpResult ? playerById.get(mvpResult.userId) : null;
+  const mvpTier = mvp
+    ? getTier(
+        Math.max(
+          ratingByUserType.get(`${mvp.id}_SINGLES`) ?? 1200,
+          ratingByUserType.get(`${mvp.id}_DOUBLES`) ?? 1200
+        )
+      )
+    : null;
 
   const rsvpFilter: ParticipationStatus | "ALL" =
     rsvp === "ATTENDING" || rsvp === "NOT_ATTENDING" || rsvp === "PENDING" ? rsvp : "ALL";
@@ -231,7 +245,20 @@ export default async function MatchDayPage({
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">완료된 경기</h2>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">완료된 경기</h2>
+          {mvp && mvpResult && mvpTier && (
+            <MvpModal
+              dateLabel={day.date.toISOString().slice(0, 10)}
+              name={mvp.name}
+              avatarSrc={mvp.avatarSrc}
+              tier={mvpTier}
+              totalEloGain={mvpResult.totalEloGain}
+              wins={mvpResult.wins}
+              losses={mvpResult.losses}
+            />
+          )}
+        </div>
         {completed.length === 0 ? (
           <p className="text-sm text-muted-foreground">완료된 경기가 없습니다.</p>
         ) : (
