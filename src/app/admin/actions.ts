@@ -17,6 +17,12 @@ export interface CreateDayState {
   error?: string;
 }
 
+// recalculateAllElo는 남아있는 승인된 경기를 전부 순서대로 재생하며 매치마다
+// 여러 번 원격 DB 왕복을 한다 — 경기 수가 늘어나면 Prisma의 기본 트랜잭션
+// 타임아웃(5초)을 넘기기 쉬워, 재계산이 필요할 수 있는 삭제 트랜잭션에는
+// 넉넉한 타임아웃을 지정한다.
+const RECALC_TRANSACTION_OPTIONS = { timeout: 30_000 };
+
 export async function createMatchDayAction(
   _prevState: CreateDayState,
   formData: FormData
@@ -171,11 +177,39 @@ export async function deleteMatchAction(matchId: string) {
     }
 
     return match.matchDayId;
-  });
+  }, RECALC_TRANSACTION_OPTIONS);
 
   revalidatePath("/admin");
   revalidatePath("/matches");
   revalidatePath(`/matches/${matchDayId}`);
+  revalidatePath("/leaderboard");
+  revalidatePath("/profile");
+}
+
+/**
+ * 경기 일자 전체를 삭제한다 (관리자 전용). 스키마의 cascade 설정
+ * (Match -> onDelete: Cascade, MatchDayParticipant -> onDelete: Cascade,
+ * EloHistory -> onDelete: Cascade)에 따라 그 날짜에 속한 경기·참석 투표
+ * 내역·ELO 히스토리가 DB 레벨에서 함께 삭제된다. 그중 이미 ELO에 반영된
+ * (APPROVED) 경기가 하나라도 있었다면, deleteMatchAction과 동일하게 남은
+ * 전체 경기를 approvalSeq 순서대로 재생해 ELO/전적을 재계산한다.
+ */
+export async function deleteMatchDayAction(dayId: string) {
+  await requireAdmin();
+
+  await prisma.$transaction(async (tx) => {
+    const matches = await tx.match.findMany({ where: { matchDayId: dayId } });
+    const hadApprovedMatch = matches.some((m) => m.status === "APPROVED");
+
+    await tx.matchDay.delete({ where: { id: dayId } });
+
+    if (hadApprovedMatch) {
+      await recalculateAllElo(tx);
+    }
+  }, RECALC_TRANSACTION_OPTIONS);
+
+  revalidatePath("/admin");
+  revalidatePath("/matches");
   revalidatePath("/leaderboard");
   revalidatePath("/profile");
 }

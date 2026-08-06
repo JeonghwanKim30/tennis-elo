@@ -132,7 +132,7 @@ model Match {
   approvedAt     DateTime?
   approvalSeq    Int?         @unique
 
-  matchDay   MatchDay     @relation(fields: [matchDayId], references: [id])
+  matchDay   MatchDay     @relation(fields: [matchDayId], references: [id], onDelete: Cascade)
   submitter  User         @relation("SubmittedMatches", fields: [submittedBy], references: [id])
   eloHistory EloHistory[]
 }

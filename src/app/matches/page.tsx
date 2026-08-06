@@ -2,7 +2,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { avatarSrc } from "@/lib/avatar";
 import { getCurrentUser } from "@/lib/session";
-import { DayParticipantsPreview } from "./DayParticipantsPreview";
+import { deleteMatchDayAction } from "@/app/admin/actions";
+import { MatchDayList } from "./MatchDayList";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 8;
@@ -133,41 +134,25 @@ export default async function MatchesPage({
         </p>
       </div>
 
-      <ul className="space-y-3">
-        {visibleDays.length === 0 && (
-          <p className="text-sm text-muted-foreground">해당하는 경기일이 없습니다.</p>
-        )}
-        {visibleDays.map((d) => {
-          const attending = d.participants
+      <MatchDayList
+        key={`${scope}-${mineOnly}-${limit}`}
+        days={visibleDays.map((d) => ({
+          id: d.id,
+          dateLabel: d.date.toISOString().slice(0, 10),
+          dDayLabel: dDayLabel(d.diffDays),
+          time: d.time,
+          location: d.location,
+          attending: d.participants
             .filter((p) => p.status === "ATTENDING")
             .map((p) => ({
               id: p.user.id,
               name: p.user.name,
               avatarSrc: avatarSrc(p.user),
-            }));
-          return (
-            <li key={d.id}>
-              <Link
-                href={`/matches/${d.id}`}
-                className="btn-press surface-card block space-y-2.5 px-5 py-4"
-              >
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="truncate font-medium">{d.date.toISOString().slice(0, 10)}</span>
-                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                    {dDayLabel(d.diffDays)}
-                  </span>
-                  {(d.time || d.location) && (
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {[d.time, d.location].filter(Boolean).join(" · ")}
-                    </span>
-                  )}
-                </div>
-                <DayParticipantsPreview participants={attending} />
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+            })),
+        }))}
+        isAdmin={user?.role === "ADMIN"}
+        deleteAction={deleteMatchDayAction}
+      />
 
       {hasMore && (
         <div className="flex justify-center">
