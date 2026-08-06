@@ -48,17 +48,16 @@ export default async function LeaderboardPage({
     genderFilter === "ALL" ? rowsToFilter : rowsToFilter.filter((r) => r.user.gender === genderFilter);
 
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-4 py-12">
-      <h1 className="text-2xl font-bold">리더보드</h1>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex shrink-0 gap-2">
+    <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+      <div className="flex flex-row flex-wrap items-center justify-between gap-2">
+        <h1 className="shrink-0 text-2xl font-bold whitespace-nowrap">리더보드</h1>
+        <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
           {TYPE_TABS.map(({ key, label }) => (
             <Link
               key={key}
               href={buildHref(key, genderFilter)}
               aria-current={typeFilter === key ? "page" : undefined}
-              className={`tab-pill btn-press touch-target rounded-full px-4 py-2 text-sm font-medium ${
+              className={`tab-pill btn-press touch-target rounded-full px-2.5 py-1 text-xs font-medium sm:px-3 sm:py-1.5 sm:text-sm ${
                 typeFilter === key
                   ? "bg-primary text-white shadow-sm shadow-primary/30"
                   : "bg-muted text-foreground/70"
@@ -67,8 +66,9 @@ export default async function LeaderboardPage({
               {label}
             </Link>
           ))}
+          <span className="mx-0.5 h-4 w-px shrink-0 bg-border" aria-hidden="true" />
+          <GenderTabs typeFilter={typeFilter} genderFilter={genderFilter} />
         </div>
-        <GenderTabs typeFilter={typeFilter} genderFilter={genderFilter} />
       </div>
 
       <RankingTable title={typeFilter === "SINGLES" ? "단식 랭킹" : "복식 랭킹"} rows={filterRows(rows)} />
@@ -78,13 +78,13 @@ export default async function LeaderboardPage({
 
 function GenderTabs({ typeFilter, genderFilter }: { typeFilter: RankingType; genderFilter: GenderFilter }) {
   return (
-    <div className="flex shrink-0 gap-2">
+    <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
       {GENDER_TABS.map(({ key, label }) => (
         <Link
           key={key}
           href={buildHref(typeFilter, key)}
           aria-current={genderFilter === key ? "page" : undefined}
-          className={`tab-pill btn-press touch-target rounded-full px-3 py-1.5 text-xs font-medium ${
+          className={`tab-pill btn-press touch-target rounded-full px-2.5 py-1 text-xs font-medium sm:px-3 sm:py-1.5 sm:text-sm ${
             genderFilter === key ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
           }`}
         >

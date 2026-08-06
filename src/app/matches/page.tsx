@@ -78,26 +78,26 @@ export default async function MatchesPage({
   const hasMore = total > visibleDays.length;
 
   return (
-    <main className="mx-auto max-w-2xl space-y-8 px-4 py-12">
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <h1 className="text-2xl font-bold">경기 목록</h1>
-        <div className="flex flex-wrap justify-end gap-2">
-          {SCOPE_TABS.map(({ key, label }) => (
-            <Link
-              key={key}
-              href={buildHref(key, mineOnly)}
-              aria-current={scope === key ? "page" : undefined}
-              className={`tab-pill btn-press touch-target rounded-full px-4 py-2 text-sm font-medium ${
-                scope === key ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
-        </div>
-      </div>
-
+    <main className="mx-auto max-w-2xl space-y-6 px-4 py-8">
       <div className="space-y-3">
+        <div className="flex flex-row flex-wrap items-center justify-between gap-2">
+          <h1 className="shrink-0 text-2xl font-bold whitespace-nowrap">경기 목록</h1>
+          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+            {SCOPE_TABS.map(({ key, label }) => (
+              <Link
+                key={key}
+                href={buildHref(key, mineOnly)}
+                aria-current={scope === key ? "page" : undefined}
+                className={`tab-pill btn-press touch-target rounded-full px-2.5 py-1 text-xs font-medium sm:px-3 sm:py-1.5 sm:text-sm ${
+                  scope === key ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
         {user && (
           <div className="flex justify-center sm:justify-start">
             <Link
