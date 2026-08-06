@@ -16,9 +16,15 @@ export default async function Home() {
       <div className="flex flex-wrap justify-center gap-3">
         {user ? (
           <>
+            {/*
+              상단 NavTabs의 "활성 탭" 색상(bg-primary text-white)과 똑같은 pill
+              스타일을 쓰면, 실제로는 활성 탭이 아닌데도 마치 '경기 목록' 탭이
+              이미 선택된 것처럼 보이는 착시가 있었다 — 내 프로필과 같은
+              아웃라인 스타일로 통일해 바로가기 버튼일 뿐임을 명확히 한다.
+            */}
             <Link
               href="/matches"
-              className="btn-press lift-on-hover rounded-full bg-primary px-6 py-3 font-medium text-white shadow-md shadow-primary/25"
+              className="btn-press rounded-full border border-border bg-card px-6 py-3 font-medium"
             >
               경기 목록
             </Link>
