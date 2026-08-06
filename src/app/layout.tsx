@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Barlow_Condensed } from "next/font/google";
 import { NavBar } from "@/components/NavBar";
+import { ConditionalNavBar } from "@/components/ConditionalNavBar";
 import { BackNavigationGuard } from "@/components/BackNavigationGuard";
 import { getCurrentUser } from "@/lib/session";
 import "./globals.css";
@@ -58,7 +59,9 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col overflow-x-hidden">
         <BackNavigationGuard homePath={homePath} />
-        <NavBar />
+        <ConditionalNavBar>
+          <NavBar />
+        </ConditionalNavBar>
         <div className="flex-1">{children}</div>
       </body>
     </html>
