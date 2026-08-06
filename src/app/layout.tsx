@@ -26,10 +26,10 @@ export const metadata: Metadata = {
   title: "테디베어 - 테니스 전적 관리",
   description: "동호회 테니스 전적 및 ELO 레이팅 관리",
   manifest: "/manifest.json",
-  icons: {
-    icon: "/brand/teddi-logo.png",
-    apple: "/brand/teddi-logo.png",
-  },
+  // 파비콘/애플 터치 아이콘은 src/app/icon.png, src/app/apple-icon.png,
+  // src/app/favicon.ico 파일 컨벤션으로 Next.js가 자동으로 <link> 태그를
+  // 생성해준다(scripts/generate-brand-icons.mjs로 생성) — 여기서 별도로
+  // 지정하지 않는다.
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
