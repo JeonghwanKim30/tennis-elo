@@ -129,10 +129,13 @@ function RankingTable({
               >
                 {i + 1}
               </span>
-              <div className="flex min-w-0 flex-1 items-center gap-2">
+              <Link
+                href={`/profile/${r.userId}`}
+                className="btn-press flex min-w-0 flex-1 items-center gap-2"
+              >
                 <Avatar src={avatarSrc(r.user)} size="sm" />
                 <span className="min-w-0 truncate font-medium">{r.user.name}</span>
-              </div>
+              </Link>
               <span className="font-display shrink-0 text-lg leading-none font-semibold text-primary">
                 {Math.round(r.rating)}
               </span>

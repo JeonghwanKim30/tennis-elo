@@ -54,6 +54,7 @@ export function UserManagementList({
               name={u.name}
               phone={u.phone}
               removing={removingIds.has(u.id)}
+              profileHref={`/profile/${u.id}`}
               badges={
                 <>
                   {isSelf && <span className="text-xs text-muted-foreground">(나)</span>}

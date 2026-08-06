@@ -104,6 +104,15 @@ export function CloseIcon({ className }: IconProps) {
   );
 }
 
+export function PencilIcon({ className }: IconProps) {
+  return (
+    <svg {...common} className={className}>
+      <path d="M4 20l4-1 11-11a2.12 2.12 0 0 0-3-3L5 16l-1 4Z" />
+      <path d="M13.5 6.5l4 4" />
+    </svg>
+  );
+}
+
 export function TrashIcon({ className }: IconProps) {
   return (
     <svg {...common} className={className}>

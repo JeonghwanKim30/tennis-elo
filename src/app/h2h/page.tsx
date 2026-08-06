@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import type { Match } from "@/generated/prisma/client";
 import { Avatar } from "@/components/Avatar";
@@ -110,10 +111,13 @@ export default async function H2HPage({
                     >
                       <div className="flex min-w-0 flex-1 items-center gap-2">
                         {opponent ? (
-                          <>
+                          <Link
+                            href={`/profile/${opponent.id}`}
+                            className="btn-press flex min-w-0 items-center gap-2"
+                          >
                             <Avatar src={opponent.avatarSrc} size="sm" />
                             <span className="min-w-0 truncate font-medium">{opponent.name}</span>
-                          </>
+                          </Link>
                         ) : (
                           <span>?</span>
                         )}
@@ -152,10 +156,14 @@ export default async function H2HPage({
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         {opponents.map((p) => (
-                          <div key={p.id} className="flex max-w-[6rem] items-center gap-1">
+                          <Link
+                            key={p.id}
+                            href={`/profile/${p.id}`}
+                            className="btn-press flex max-w-[6rem] items-center gap-1"
+                          >
                             <Avatar src={p.avatarSrc} size="sm" />
                             <span className="truncate">{p.name}</span>
-                          </div>
+                          </Link>
                         ))}
                       </div>
                       <span className="font-medium">

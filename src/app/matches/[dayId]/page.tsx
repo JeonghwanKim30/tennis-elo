@@ -137,7 +137,7 @@ export default async function MatchDayPage({
                         isSelf ? "bg-accent/15 ring-1 ring-accent" : ""
                       }`}
                     >
-                      <PlayerBadge avatarSrc={m.avatarSrc} name={m.name} />
+                      <PlayerBadge avatarSrc={m.avatarSrc} name={m.name} userId={m.id} />
                       {isSelf && <span className="text-[10px] font-medium text-muted-foreground">나</span>}
                       {canEdit ? (
                         <div className="flex gap-1">

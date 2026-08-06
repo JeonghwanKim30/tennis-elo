@@ -42,7 +42,7 @@ export function TeamBadges({
       {/* 단식은 선수 1명 — 프로필 우측에 배지를 놓는다. */}
       {type === "SINGLES" && (
         <div className="flex items-center gap-1.5">
-          <PlayerBadge avatarSrc={player1.avatarSrc} name={player1.name} />
+          <PlayerBadge avatarSrc={player1.avatarSrc} name={player1.name} userId={player1.id} />
           {showElo && <EloChangeBadge value={eloChange} />}
         </div>
       )}
@@ -53,7 +53,7 @@ export function TeamBadges({
         <div className="flex items-center gap-1.5">
           {showElo && <EloChangeBadge value={eloChange} />}
           <div className="flex flex-col items-center gap-1">
-            <PlayerBadge avatarSrc={player1.avatarSrc} name={player1.name} />
+            <PlayerBadge avatarSrc={player1.avatarSrc} name={player1.name} userId={player1.id} />
             <span className="text-xs text-muted-foreground">포핸드</span>
           </div>
         </div>
@@ -61,7 +61,7 @@ export function TeamBadges({
       {type === "DOUBLES" && player2 && (
         <div className="flex items-center gap-1.5">
           <div className="flex flex-col items-center gap-1">
-            <PlayerBadge avatarSrc={player2.avatarSrc} name={player2.name} />
+            <PlayerBadge avatarSrc={player2.avatarSrc} name={player2.name} userId={player2.id} />
             <span className="text-xs text-muted-foreground">백핸드</span>
           </div>
           {showElo && <EloChangeBadge value={eloChange} />}

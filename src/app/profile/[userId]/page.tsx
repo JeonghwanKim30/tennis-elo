@@ -1,28 +1,43 @@
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 import { avatarSrc } from "@/lib/avatar";
-import { type TeamPlayer } from "@/components/TeamBadges";
+import { Avatar } from "@/components/Avatar";
 import { TierBadge } from "@/components/TierBadge";
-import { AvatarUploader } from "./AvatarUploader";
-import { BioEditor } from "./BioEditor";
-import { PhoneEditor } from "./PhoneEditor";
-import { ProfileStats } from "./ProfileStats";
+import { type TeamPlayer } from "@/components/TeamBadges";
+import { ProfileStats } from "../ProfileStats";
 
 type Tab = "all" | "singles" | "doubles";
 
-export default async function ProfilePage({
+// 타인의 프로필 조회 전용 페이지 — 공개 정보(사진/이름/자기소개/ELO/전적/티어)만
+// 보여주고, 전화번호나 사진 변경·자기소개 편집·전화번호 변경 같은 편집 UI는
+// 전혀 렌더링하지 않는다(본인 프로필의 /profile 페이지에만 존재).
+export default async function PublicProfilePage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ userId: string }>;
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const user = await requireUser();
+  const { userId } = await params;
+  const viewer = await getCurrentUser();
+  // 본인 프로필은 편집 가능한 /profile이 정본(canonical) 주소다 — 그쪽으로 보낸다.
+  if (viewer && viewer.id === userId) {
+    redirect("/profile");
+  }
+
   const { tab: rawTab } = await searchParams;
   const tab: Tab = rawTab === "singles" || rawTab === "doubles" ? rawTab : "all";
 
-  const ratings = await prisma.eloRating.findMany({ where: { userId: user.id } });
+  // 탈퇴/추방/미승인 회원은 공개 프로필 대상이 아니다(다른 공개 목록들과 동일한 기준).
+  const profileUser = await prisma.user.findUnique({ where: { id: userId } });
+  if (!profileUser || profileUser.status !== "ACTIVE") {
+    notFound();
+  }
+
+  const ratings = await prisma.eloRating.findMany({ where: { userId } });
   const singles = ratings.find((r) => r.type === "SINGLES");
   const doubles = ratings.find((r) => r.type === "DOUBLES");
-  // 티어는 단식/복식 ELO 평균을 기준으로 매긴다(둘 중 하나만 있어도 미기록 쪽은 1200 기본값 취급).
   const tierRating = ((singles?.rating ?? 1200) + (doubles?.rating ?? 1200)) / 2;
 
   const typeFilter = tab === "singles" ? "SINGLES" : tab === "doubles" ? "DOUBLES" : undefined;
@@ -32,10 +47,10 @@ export default async function ProfilePage({
       status: "APPROVED",
       ...(typeFilter ? { type: typeFilter } : {}),
       OR: [
-        { teamAPlayer1: user.id },
-        { teamAPlayer2: user.id },
-        { teamBPlayer1: user.id },
-        { teamBPlayer2: user.id },
+        { teamAPlayer1: userId },
+        { teamAPlayer2: userId },
+        { teamBPlayer1: userId },
+        { teamBPlayer2: userId },
       ],
     },
     include: { matchDay: true },
@@ -61,25 +76,26 @@ export default async function ProfilePage({
 
   return (
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-12">
-      {/* items-start + 살짝의 top padding으로 이름/전화번호가 아바타 머리 높이
-          쪽에 오도록 맞춘다(기존에는 items-center라 아바타 정중앙에 맞춰져 있었음). */}
       <div className="flex items-start gap-4">
-        <AvatarUploader currentSrc={avatarSrc(user)} />
+        <Avatar src={avatarSrc(profileUser)} size="lg" className="shadow-md shadow-primary/10" />
         <div className="min-w-0 pt-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="truncate text-2xl font-bold">{user.name}</h1>
+            <h1 className="truncate text-2xl font-bold">{profileUser.name}</h1>
             <TierBadge rating={tierRating} />
-          </div>
-          <div className="mt-1 truncate text-sm text-muted-foreground">
-            <PhoneEditor initialPhone={user.phone} />
           </div>
         </div>
       </div>
 
-      <BioEditor initialBio={user.bio ?? ""} />
+      <div className="surface-card p-4 shadow-sm">
+        <p className="text-sm text-foreground/90">
+          {profileUser.bio || (
+            <span className="text-muted-foreground">아직 등록된 자기소개가 없습니다.</span>
+          )}
+        </p>
+      </div>
 
       <ProfileStats
-        basePath="/profile"
+        basePath={`/profile/${userId}`}
         tab={tab}
         singles={singles}
         doubles={doubles}

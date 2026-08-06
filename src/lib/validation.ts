@@ -46,6 +46,11 @@ export const matchSubmitSchema = z
     { message: "같은 선수를 중복해서 선택할 수 없습니다.", path: ["teamBPlayer1"] }
   );
 
+export const bioSchema = z
+  .string()
+  .trim()
+  .max(30, "자기소개는 최대 30자까지 입력할 수 있습니다.");
+
 export const matchScoreSchema = z.object({
   teamAScore: z.coerce.number().int().min(0, "0 이상의 숫자를 입력해주세요."),
   teamBScore: z.coerce.number().int().min(0, "0 이상의 숫자를 입력해주세요."),
