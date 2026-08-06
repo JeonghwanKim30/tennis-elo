@@ -58,6 +58,11 @@ export async function createMatchDayAction(
  * 회원을 추방한다 — 실제 행을 지우면 그동안의 경기 이력/ELO 히스토리까지
  * 함께 사라지므로, 상태만 BANNED로 바꿔 로그인과 공개 목록(랭킹/참가자 추가
  * 등)에서 제외되게 한다. 자기 자신은 추방할 수 없다.
+ *
+ * 전화번호는 `banned_{userId}`로 마스킹해서 원래 번호를 즉시 풀어준다 —
+ * 마스킹하지 않으면 그 번호가 phone 컬럼의 UNIQUE 제약을 계속 붙들고 있어서,
+ * 실제로는 아무도 안 쓰는 번호인데도 재가입/번호 변경 시 "이미 등록된
+ * 번호입니다" 오류가 나는 문제가 있었다.
  */
 export async function banUserAction(userId: string) {
   const admin = await requireAdmin();
@@ -65,7 +70,7 @@ export async function banUserAction(userId: string) {
 
   await prisma.user.update({
     where: { id: userId },
-    data: { status: "BANNED" },
+    data: { status: "BANNED", phone: `banned_${userId}` },
   });
 
   revalidatePath("/admin");
@@ -96,12 +101,17 @@ export async function approveUserAction(userId: string) {
   revalidatePath("/admin");
 }
 
+/**
+ * 가입 신청을 거절한다. 거절된 신청자는 한 번도 ACTIVE였던 적이 없어
+ * EloRating/Match/MatchDayParticipant 등 어떤 이력도 가질 수 없으므로
+ * (모든 인증된 액션은 ACTIVE 상태를 요구한다), 상태만 바꾸는 대신 행을
+ * 완전히 삭제한다 — 그래야 같은 이름/전화번호로 바로 재가입할 수 있다.
+ * (반대로 추방(BANNED)은 추방 전까지 실제 활동 이력이 있을 수 있어 행을
+ * 지우지 않고 전화번호만 마스킹한다. banUserAction 참고.)
+ */
 export async function rejectUserAction(userId: string) {
-  const admin = await requireAdmin();
-  await prisma.user.update({
-    where: { id: userId },
-    data: { status: "REJECTED", approvedAt: new Date(), approvedBy: admin.id },
-  });
+  await requireAdmin();
+  await prisma.user.delete({ where: { id: userId } });
   revalidatePath("/admin");
 }
 

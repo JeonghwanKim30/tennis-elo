@@ -82,7 +82,12 @@ export async function updatePhoneAction(
   const phone = parsed.data;
 
   if (phone !== user.phone) {
-    const existing = await prisma.user.findUnique({ where: { phone } });
+    // signupAction과 동일한 이유로 ACTIVE/PENDING 상태만 "이미 등록됨"으로
+    // 취급한다 — REJECTED는 삭제되고 BANNED는 전화번호가 마스킹되어 있어
+    // 실제로는 충돌하지 않지만, 조회 조건에서도 한 번 더 방어한다.
+    const existing = await prisma.user.findFirst({
+      where: { phone, status: { in: ["ACTIVE", "PENDING"] } },
+    });
     if (existing) {
       return { error: "이미 등록된 휴대폰 번호입니다." };
     }
