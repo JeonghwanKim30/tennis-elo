@@ -94,6 +94,7 @@ export default async function MatchesPage({
               <Link
                 key={key}
                 href={buildHref(key, mineOnly)}
+                scroll={false}
                 aria-current={scope === key ? "page" : undefined}
                 className={`tab-pill btn-press touch-target rounded-full px-2 py-1 text-[11px] font-medium whitespace-nowrap sm:px-3 sm:py-1.5 sm:text-sm ${
                   scope === key ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
@@ -110,6 +111,7 @@ export default async function MatchesPage({
             {/* scope는 그대로 두고 mine만 뒤집는다 — 탭 선택은 절대 건드리지 않는다. */}
             <Link
               href={buildHref(scope, !mineOnly)}
+              scroll={false}
               aria-pressed={mineOnly}
               className={`tab-pill btn-press touch-target rounded-full px-4 py-2 text-xs font-medium ${
                 mineOnly ? "bg-accent/40 text-accent-foreground" : "bg-muted text-foreground/70"
@@ -148,6 +150,7 @@ export default async function MatchesPage({
         <div className="flex justify-center">
           <Link
             href={buildHref(scope, mineOnly, limit + PAGE_SIZE)}
+            scroll={false}
             className="btn-press touch-target rounded-full bg-muted px-6 py-2.5 text-sm font-medium text-foreground/70"
           >
             더보기 ({total - visibleDays.length}개 더 있음)

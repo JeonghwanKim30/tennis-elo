@@ -58,6 +58,7 @@ export default async function LeaderboardPage({
             <Link
               key={key}
               href={buildHref(key, genderFilter)}
+              scroll={false}
               aria-current={typeFilter === key ? "page" : undefined}
               className={`tab-pill btn-press touch-target rounded-full px-2.5 py-1 text-xs font-medium sm:px-3 sm:py-1.5 sm:text-sm ${
                 typeFilter === key
@@ -85,6 +86,7 @@ function GenderTabs({ typeFilter, genderFilter }: { typeFilter: RankingType; gen
         <Link
           key={key}
           href={buildHref(typeFilter, key)}
+          scroll={false}
           aria-current={genderFilter === key ? "page" : undefined}
           className={`tab-pill btn-press touch-target rounded-full px-2.5 py-1 text-xs font-medium sm:px-3 sm:py-1.5 sm:text-sm ${
             genderFilter === key ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
@@ -121,7 +123,7 @@ function RankingTable({
       ) : (
         // 표 대신 줄바꿈 가능한 행으로 구성해, 좁은 화면에서 열이 잘리거나
         // 가로 스크롤이 필요해지는 대신 내용이 자연스럽게 다음 줄로 넘어가게 한다.
-        <div className="surface-card divide-y divide-border">
+        <div className="surface-card min-h-[160px] divide-y divide-border">
           {rows.map((r, i) => (
             <div key={r.userId} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
               <span

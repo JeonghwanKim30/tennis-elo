@@ -142,6 +142,7 @@ export default async function MatchDayPage({
             <Link
               key={key}
               href={key === "ALL" ? `/matches/${day.id}` : `/matches/${day.id}?rsvp=${key}`}
+              scroll={false}
               aria-current={rsvpFilter === key ? "page" : undefined}
               className={`tab-pill btn-press touch-target rounded-full px-3 py-1.5 text-xs font-medium ${
                 rsvpFilter === key ? "bg-primary text-white" : "bg-muted text-foreground/70"

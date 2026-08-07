@@ -62,7 +62,7 @@ export function MatchDayList({
 
   return (
     <>
-      <ul className="space-y-3">
+      <ul className="min-h-[160px] space-y-3">
         {days.length === 0 && (
           <p className="text-sm text-muted-foreground">해당하는 경기일이 없습니다.</p>
         )}
