@@ -92,15 +92,15 @@ export function MatchDayList({
                   )}
                 </div>
                 {d.thumbnailSrc && (
-                  <div className="relative shrink-0">
+                  <div className="group relative shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={d.thumbnailSrc}
                       alt=""
-                      className="h-10 w-10 rounded-lg border border-border object-cover"
+                      className="h-12 w-12 rounded-xl border border-emerald-100/50 object-cover shadow-sm transition-transform duration-200 ease-out group-hover:scale-105 group-active:scale-105"
                     />
-                    <span className="absolute -top-1.5 -right-1.5 rounded-full bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-white">
-                      📷{d.photoCount}
+                    <span className="absolute -right-1.5 -bottom-1.5 rounded-full border border-emerald-200 bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 shadow-sm">
+                      📷 {d.photoCount}
                     </span>
                   </div>
                 )}
