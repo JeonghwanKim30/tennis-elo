@@ -76,6 +76,7 @@ model User {
   eloHistory             EloHistory[]
   matchDayParticipations MatchDayParticipant[]
   createdMatchDays       MatchDay[]            @relation("CreatedMatchDays")
+  uploadedMatchDayPhotos MatchDayPhoto[]
 }
 
 model MatchDay {
@@ -85,13 +86,24 @@ model MatchDay {
   location  String?
   createdBy String
   createdAt DateTime @default(now())
-  // 날짜당 현장 사진 1장(용량 부하 방지를 위해 다중 업로드는 지원하지 않음).
-  photo     Bytes?
-  photoType String?
 
   creator      User                  @relation("CreatedMatchDays", fields: [createdBy], references: [id])
   participants MatchDayParticipant[]
   matches      Match[]
+  photos       MatchDayPhoto[]
+}
+
+// 날짜당 현장 사진 여러 장(최대 10장, MatchDayPhoto.ts의 MAX_PHOTOS_PER_DAY 참고).
+model MatchDayPhoto {
+  id         String   @id @default(cuid())
+  matchDayId String
+  image      Bytes
+  imageType  String
+  uploadedBy String
+  createdAt  DateTime @default(now())
+
+  matchDay MatchDay @relation(fields: [matchDayId], references: [id], onDelete: Cascade)
+  uploader User     @relation(fields: [uploadedBy], references: [id])
 }
 
 model MatchDayParticipant {

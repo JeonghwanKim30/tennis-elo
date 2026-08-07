@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/session";
 import { avatarSrc } from "@/lib/avatar";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { TierBadge } from "@/components/TierBadge";
+import { TierInfoModal } from "@/components/TierInfoModal";
 import { getTier, compareTierChange } from "@/lib/tier";
 import { AvatarUploader } from "./AvatarUploader";
 import { BioEditor } from "./BioEditor";
@@ -81,6 +82,7 @@ export default async function ProfilePage({
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="truncate text-2xl font-bold">{user.name}</h1>
             <TierBadge rating={tierRating} />
+            <TierInfoModal currentTierKey={getTier(tierRating).key} />
           </div>
           <div className="mt-1 truncate text-sm text-muted-foreground">
             <PhoneEditor initialPhone={user.phone} />

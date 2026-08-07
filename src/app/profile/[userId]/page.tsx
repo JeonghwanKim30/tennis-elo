@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/session";
 import { avatarSrc } from "@/lib/avatar";
 import { Avatar } from "@/components/Avatar";
 import { TierBadge } from "@/components/TierBadge";
+import { TierInfoModal } from "@/components/TierInfoModal";
+import { getTier } from "@/lib/tier";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { ProfileStats } from "../ProfileStats";
 
@@ -84,6 +86,7 @@ export default async function PublicProfilePage({
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="truncate text-2xl font-bold">{profileUser.name}</h1>
             <TierBadge rating={tierRating} />
+            <TierInfoModal currentTierKey={getTier(tierRating).key} />
           </div>
         </div>
       </div>

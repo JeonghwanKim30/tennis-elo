@@ -4,21 +4,23 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { matchSubmitSchema } from "@/lib/validation";
+import { MAX_PHOTOS_PER_DAY } from "./photoConfig";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 export interface MatchDayPhotoState {
   error?: string;
+  id?: string;
 }
 
-// 경기일당 사진은 1장만 유지한다(용량 부하 방지) — 새로 올리면 기존 사진을
-// 덮어쓴다. 로그인한 회원이면 누구나 올릴 수 있다(경기 등록/참여 투표와 동일한
-// 권한 수준).
+// 경기일당 사진은 최대 MAX_PHOTOS_PER_DAY장까지 갤러리 형태로 쌓인다(용량 부하
+// 방지를 위한 상한). 로그인한 회원이면 누구나 올릴 수 있다(경기 등록/참여 투표와
+// 동일한 권한 수준) — 삭제도 마찬가지로 로그인한 누구나 가능하다.
 export async function uploadMatchDayPhotoAction(
   dayId: string,
   dataUrl: string
 ): Promise<MatchDayPhotoState> {
-  await requireUser();
+  const user = await requireUser();
 
   const match = /^data:(image\/\w+);base64,(.+)$/.exec(dataUrl);
   if (!match) {
@@ -31,20 +33,24 @@ export async function uploadMatchDayPhotoAction(
     return { error: "이미지 용량이 너무 큽니다." };
   }
 
-  await prisma.matchDay.update({
-    where: { id: dayId },
-    data: { photo: buffer, photoType: mimeType },
+  const count = await prisma.matchDayPhoto.count({ where: { matchDayId: dayId } });
+  if (count >= MAX_PHOTOS_PER_DAY) {
+    return { error: `사진은 최대 ${MAX_PHOTOS_PER_DAY}장까지 등록할 수 있습니다.` };
+  }
+
+  const photo = await prisma.matchDayPhoto.create({
+    data: { matchDayId: dayId, image: buffer, imageType: mimeType, uploadedBy: user.id },
   });
 
   revalidatePath(`/matches/${dayId}`);
   revalidatePath("/matches");
-  return {};
+  return { id: photo.id };
 }
 
-export async function deleteMatchDayPhotoAction(dayId: string) {
+export async function deleteMatchDayPhotoAction(photoId: string) {
   await requireUser();
-  await prisma.matchDay.update({ where: { id: dayId }, data: { photo: null, photoType: null } });
-  revalidatePath(`/matches/${dayId}`);
+  const photo = await prisma.matchDayPhoto.delete({ where: { id: photoId } });
+  revalidatePath(`/matches/${photo.matchDayId}`);
   revalidatePath("/matches");
 }
 

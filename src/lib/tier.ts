@@ -76,6 +76,32 @@ export function isTierKey(value: string): value is TierKey {
   return TIER_DEFS.some((t) => t.key === value);
 }
 
+const TIER_ORDER: TierKey[] = [
+  "IRON",
+  "BRONZE",
+  "SILVER",
+  "GOLD",
+  "PLATINUM",
+  "DIAMOND",
+  "MASTER",
+  "CHALLENGER",
+];
+
+export interface TierRange {
+  tier: Tier;
+  min: number;
+  max: number | null;
+}
+
+/** 아이언→챌린저 순으로 전체 티어와 ELO 점수 구간을 반환한다(티어 안내 모달용). */
+export function getAllTierRanges(): TierRange[] {
+  return TIER_ORDER.map((key, i) => {
+    const def = TIER_DEFS.find((d) => d.key === key)!;
+    const nextDef = i < TIER_ORDER.length - 1 ? TIER_DEFS.find((d) => d.key === TIER_ORDER[i + 1])! : null;
+    return { tier: getTierByKey(key), min: def.min, max: nextDef ? nextDef.min - 1 : null };
+  });
+}
+
 export interface TierChange {
   direction: "UP" | "DOWN";
   from: Tier;

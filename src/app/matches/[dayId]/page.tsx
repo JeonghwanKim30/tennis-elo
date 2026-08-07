@@ -13,7 +13,7 @@ import type { MatchType, ParticipationStatus } from "@/generated/prisma/client";
 import { MatchComposerPanel } from "./MatchComposerPanel";
 import { AttendanceCarousel } from "./AttendanceCarousel";
 import { MvpModal } from "./MvpModal";
-import { MatchDayPhoto } from "./MatchDayPhoto";
+import { MatchDayPhotoGallery } from "./MatchDayPhotoGallery";
 import { setParticipationStatusAction } from "./actions";
 
 const RSVP_LABEL: Record<ParticipationStatus, string> = {
@@ -53,7 +53,10 @@ export default async function MatchDayPage({
 
   const day = await prisma.matchDay.findUnique({
     where: { id: dayId },
-    include: { matches: { orderBy: { submittedAt: "asc" } } },
+    include: {
+      matches: { orderBy: { submittedAt: "asc" } },
+      photos: { orderBy: { createdAt: "asc" } },
+    },
   });
   if (!day) notFound();
 
@@ -115,9 +118,10 @@ export default async function MatchDayPage({
   };
   const visibleMembers = rsvpFilter === "ALL" ? members : members.filter((m) => m.status === rsvpFilter);
   const dateLabel = day.date.toISOString().slice(0, 10);
-  const photoSrc = day.photo && day.photoType
-    ? `data:${day.photoType};base64,${Buffer.from(day.photo).toString("base64")}`
-    : null;
+  const photos = day.photos.map((p) => ({
+    id: p.id,
+    src: `data:${p.imageType};base64,${Buffer.from(p.image).toString("base64")}`,
+  }));
 
   return (
     <main className="mx-auto max-w-3xl space-y-8 px-4 py-12">
@@ -132,7 +136,7 @@ export default async function MatchDayPage({
         )}
       </div>
 
-      <MatchDayPhoto dayId={day.id} dateLabel={dateLabel} initialSrc={photoSrc} canManage={!!user} />
+      <MatchDayPhotoGallery dayId={day.id} dateLabel={dateLabel} initialPhotos={photos} canManage={!!user} />
 
       <section className="surface-card p-5">
         <h2 className="mb-3 text-lg font-semibold">참석 여부</h2>
