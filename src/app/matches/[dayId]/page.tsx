@@ -13,6 +13,7 @@ import type { MatchType, ParticipationStatus } from "@/generated/prisma/client";
 import { MatchComposerPanel } from "./MatchComposerPanel";
 import { AttendanceCarousel } from "./AttendanceCarousel";
 import { MvpModal } from "./MvpModal";
+import { MatchDayPhoto } from "./MatchDayPhoto";
 import { setParticipationStatusAction } from "./actions";
 
 const RSVP_LABEL: Record<ParticipationStatus, string> = {
@@ -113,11 +114,15 @@ export default async function MatchDayPage({
     PENDING: members.filter((m) => m.status === "PENDING").length,
   };
   const visibleMembers = rsvpFilter === "ALL" ? members : members.filter((m) => m.status === rsvpFilter);
+  const dateLabel = day.date.toISOString().slice(0, 10);
+  const photoSrc = day.photo && day.photoType
+    ? `data:${day.photoType};base64,${Buffer.from(day.photo).toString("base64")}`
+    : null;
 
   return (
     <main className="mx-auto max-w-3xl space-y-8 px-4 py-12">
       <div>
-        <h1 className="text-2xl font-bold">{day.date.toISOString().slice(0, 10)} 경기</h1>
+        <h1 className="text-2xl font-bold">{dateLabel} 경기</h1>
         {(day.time || day.location) && (
           <p className="mt-1 text-sm text-muted-foreground">
             {day.time && <span>{day.time}</span>}
@@ -126,6 +131,8 @@ export default async function MatchDayPage({
           </p>
         )}
       </div>
+
+      <MatchDayPhoto dayId={day.id} dateLabel={dateLabel} initialSrc={photoSrc} canManage={!!user} />
 
       <section className="surface-card p-5">
         <h2 className="mb-3 text-lg font-semibold">참석 여부</h2>

@@ -6,6 +6,36 @@ const K_FACTOR_PROVISIONAL = 32;
 const K_FACTOR_ESTABLISHED = 24;
 
 export type MatchOutcome = "WIN" | "LOSS" | "DRAW";
+export type PlayerGender = "MALE" | "FEMALE";
+
+// 남/녀 단식·복식 매치 특성을 반영한 보정 배율. 표본이 상대적으로 적은
+// 여성부 매치는 레이팅이 더 빨리 수렴하도록 배율을 살짝 높이고, 성별이
+// 섞인 단식(혼성 단식)은 변동성을 다소 완화한다. 동성 매치(남 vs 남,
+// 남복/여복)는 기존과 동일하게 1.0(기준)을 유지한다.
+const SINGLES_GENDER_MULTIPLIER = {
+  MALE_MALE: 1.0,
+  FEMALE_FEMALE: 1.1,
+  MIXED: 0.9,
+} as const;
+
+const DOUBLES_GENDER_MULTIPLIER = {
+  MALE_DOUBLES: 1.0,
+  FEMALE_DOUBLES: 1.1,
+  MIXED_DOUBLES: 1.0,
+} as const;
+
+export function singlesGenderMultiplier(genderA: PlayerGender, genderB: PlayerGender): number {
+  if (genderA === genderB) {
+    return genderA === "FEMALE" ? SINGLES_GENDER_MULTIPLIER.FEMALE_FEMALE : SINGLES_GENDER_MULTIPLIER.MALE_MALE;
+  }
+  return SINGLES_GENDER_MULTIPLIER.MIXED;
+}
+
+export function doublesGenderMultiplier(genders: PlayerGender[]): number {
+  if (genders.every((g) => g === "FEMALE")) return DOUBLES_GENDER_MULTIPLIER.FEMALE_DOUBLES;
+  if (genders.every((g) => g === "MALE")) return DOUBLES_GENDER_MULTIPLIER.MALE_DOUBLES;
+  return DOUBLES_GENDER_MULTIPLIER.MIXED_DOUBLES;
+}
 
 export function outcomeScore(outcome: MatchOutcome): number {
   if (outcome === "WIN") return 1;
@@ -47,6 +77,8 @@ export interface EloMatchInput {
   gameScoreA: number;
   gameScoreB: number;
   resultForA: MatchOutcome;
+  /** 성별 매치 카테고리 보정 배율(기본 1.0) — singlesGenderMultiplier/doublesGenderMultiplier 참고. */
+  genderMultiplier?: number;
 }
 
 export interface EloMatchResult {
@@ -65,7 +97,8 @@ export interface EloMatchResult {
  * 쪽이 있으면 매치 전체를 더 유동적으로 다룬다.)
  */
 export function calculateEloChange(input: EloMatchInput): EloMatchResult {
-  const { ratingA, ratingB, gamesPlayedA, gamesPlayedB, gameScoreA, gameScoreB, resultForA } = input;
+  const { ratingA, ratingB, gamesPlayedA, gamesPlayedB, gameScoreA, gameScoreB, resultForA, genderMultiplier = 1.0 } =
+    input;
 
   const expectedA = expectedScore(ratingA, ratingB);
   const actualA = outcomeScore(resultForA);
@@ -76,7 +109,7 @@ export function calculateEloChange(input: EloMatchInput): EloMatchResult {
   const mov = movMultiplier(gameScoreA, gameScoreB, winnerRating, loserRating);
 
   // 0에 -1을 곱하면 -0이 나와 이후 정수 비교/직렬화에서 미묘한 문제를 일으킬 수 있으므로 정규화한다.
-  const deltaA = Math.round(kFactor * mov * (actualA - expectedA)) || 0;
+  const deltaA = Math.round(kFactor * mov * genderMultiplier * (actualA - expectedA)) || 0;
 
   return { deltaA, deltaB: deltaA === 0 ? 0 : -deltaA, expectedA, kFactor, movMultiplier: mov };
 }
@@ -88,7 +121,8 @@ export function calculateSinglesElo(
   gamesPlayedB: number,
   gameScoreA: number,
   gameScoreB: number,
-  resultForA: MatchOutcome
+  resultForA: MatchOutcome,
+  genderMultiplier = 1.0
 ): { ratingA: number; ratingB: number } & EloMatchResult {
   const eloChange = calculateEloChange({
     ratingA,
@@ -98,6 +132,7 @@ export function calculateSinglesElo(
     gameScoreA,
     gameScoreB,
     resultForA,
+    genderMultiplier,
   });
 
   return {
@@ -121,7 +156,8 @@ export function calculateDoublesElo(
   teamB: [PlayerEloInput, PlayerEloInput],
   gameScoreA: number,
   gameScoreB: number,
-  resultForTeamA: MatchOutcome
+  resultForTeamA: MatchOutcome,
+  genderMultiplier = 1.0
 ): { teamA: [number, number]; teamB: [number, number] } & EloMatchResult {
   const ratingA = (teamA[0].rating + teamA[1].rating) / 2;
   const ratingB = (teamB[0].rating + teamB[1].rating) / 2;
@@ -136,6 +172,7 @@ export function calculateDoublesElo(
     gameScoreA,
     gameScoreB,
     resultForA: resultForTeamA,
+    genderMultiplier,
   });
 
   return {

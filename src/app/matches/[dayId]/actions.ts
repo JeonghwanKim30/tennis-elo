@@ -5,6 +5,49 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { matchSubmitSchema } from "@/lib/validation";
 
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+export interface MatchDayPhotoState {
+  error?: string;
+}
+
+// 경기일당 사진은 1장만 유지한다(용량 부하 방지) — 새로 올리면 기존 사진을
+// 덮어쓴다. 로그인한 회원이면 누구나 올릴 수 있다(경기 등록/참여 투표와 동일한
+// 권한 수준).
+export async function uploadMatchDayPhotoAction(
+  dayId: string,
+  dataUrl: string
+): Promise<MatchDayPhotoState> {
+  await requireUser();
+
+  const match = /^data:(image\/\w+);base64,(.+)$/.exec(dataUrl);
+  if (!match) {
+    return { error: "이미지 형식이 올바르지 않습니다." };
+  }
+  const [, mimeType, base64] = match;
+  const buffer = Buffer.from(base64, "base64");
+
+  if (buffer.byteLength > MAX_PHOTO_BYTES) {
+    return { error: "이미지 용량이 너무 큽니다." };
+  }
+
+  await prisma.matchDay.update({
+    where: { id: dayId },
+    data: { photo: buffer, photoType: mimeType },
+  });
+
+  revalidatePath(`/matches/${dayId}`);
+  revalidatePath("/matches");
+  return {};
+}
+
+export async function deleteMatchDayPhotoAction(dayId: string) {
+  await requireUser();
+  await prisma.matchDay.update({ where: { id: dayId }, data: { photo: null, photoType: null } });
+  revalidatePath(`/matches/${dayId}`);
+  revalidatePath("/matches");
+}
+
 // 본인 또는 관리자만 참여/불참을 투표할 수 있다. 해당 일자에 아직 기록이 없으면
 // (한 번도 응답하지 않은 회원 = 미응답) 새로 만들고, 있으면 상태만 갱신한다.
 export async function setParticipationStatusAction(

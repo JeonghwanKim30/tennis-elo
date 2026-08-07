@@ -85,6 +85,9 @@ model MatchDay {
   location  String?
   createdBy String
   createdAt DateTime @default(now())
+  // 날짜당 현장 사진 1장(용량 부하 방지를 위해 다중 업로드는 지원하지 않음).
+  photo     Bytes?
+  photoType String?
 
   creator      User                  @relation("CreatedMatchDays", fields: [createdBy], references: [id])
   participants MatchDayParticipant[]

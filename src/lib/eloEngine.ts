@@ -1,4 +1,12 @@
-import { calculateDoublesElo, calculateSinglesElo, INITIAL_RATING, type MatchOutcome } from "@/lib/elo";
+import {
+  calculateDoublesElo,
+  calculateSinglesElo,
+  doublesGenderMultiplier,
+  singlesGenderMultiplier,
+  INITIAL_RATING,
+  type MatchOutcome,
+  type PlayerGender,
+} from "@/lib/elo";
 import type { Prisma, MatchResult, MatchType } from "@/generated/prisma/client";
 
 type Tx = Prisma.TransactionClient;
@@ -33,14 +41,22 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
     skipDuplicates: true,
   });
 
-  const ratingRows = await tx.eloRating.findMany({
-    where: { userId: { in: allIds }, type: match.type },
-  });
+  const [ratingRows, userRows] = await Promise.all([
+    tx.eloRating.findMany({ where: { userId: { in: allIds }, type: match.type } }),
+    tx.user.findMany({ where: { id: { in: allIds } }, select: { id: true, gender: true } }),
+  ]);
   const ratingByUser = new Map(ratingRows.map((r) => [r.userId, r]));
+  const genderByUser = new Map<string, PlayerGender>(userRows.map((u) => [u.id, u.gender]));
   const gamesPlayed = (userId: string) => {
     const r = ratingByUser.get(userId)!;
     return r.wins + r.losses + r.draws;
   };
+
+  // 남/녀 단식·복식 매치 특성을 반영한 보정 배율(lib/elo.ts 참고).
+  const genderMultiplier =
+    match.type === "SINGLES"
+      ? singlesGenderMultiplier(genderByUser.get(teamAIds[0])!, genderByUser.get(teamBIds[0])!)
+      : doublesGenderMultiplier(allIds.map((id) => genderByUser.get(id)!));
 
   const outcomeForTeamA: MatchOutcome =
     result === "TEAM_A_WIN" ? "WIN" : result === "TEAM_B_WIN" ? "LOSS" : "DRAW";
@@ -61,7 +77,8 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
       gamesPlayed(teamBIds[0]),
       match.teamAScore,
       match.teamBScore,
-      outcomeForTeamA
+      outcomeForTeamA,
+      genderMultiplier
     );
     newRatings = new Map([
       [teamAIds[0], eloResult.ratingA],
@@ -85,7 +102,8 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
       ],
       match.teamAScore,
       match.teamBScore,
-      outcomeForTeamA
+      outcomeForTeamA,
+      genderMultiplier
     );
     newRatings = new Map([
       [teamAIds[0], eloResult.teamA[0]],
