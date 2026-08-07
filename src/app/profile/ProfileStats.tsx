@@ -94,7 +94,7 @@ export function ProfileStats({
           )}
         </div>
 
-        <ul className="space-y-3">
+        <ul className="min-h-[160px] space-y-3">
           {matches.length === 0 && (
             <p className="text-sm text-muted-foreground">경기 기록이 없습니다.</p>
           )}
@@ -182,6 +182,7 @@ function TabLink({
   return (
     <Link
       href={href}
+      scroll={false}
       className={`tab-pill btn-press touch-target rounded-full px-4 py-2 text-sm font-medium ${
         isActive ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
       }`}
