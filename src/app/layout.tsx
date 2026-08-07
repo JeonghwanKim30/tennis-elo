@@ -23,6 +23,12 @@ const barlowCondensed = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
+  // og:image 등 소셜 공유 미리보기 태그의 상대경로(/opengraph-image)를 절대
+  // URL로 바꾸는 데 필요 — Vercel 배포 시 자동 주입되는 VERCEL_URL을 쓰고,
+  // 로컬 개발 환경에서는 localhost로 대체한다.
+  metadataBase: new URL(
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
+  ),
   title: "테디베어 - 테니스 전적 관리",
   description: "동호회 테니스 전적 및 ELO 레이팅 관리",
   manifest: "/manifest.json",

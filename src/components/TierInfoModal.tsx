@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { getAllTierRanges, type TierKey } from "@/lib/tier";
-import { CloseIcon } from "@/components/icons";
+import { CloseIcon, InfoIcon } from "@/components/icons";
 
 export function TierInfoModal({ currentTierKey }: { currentTierKey: TierKey }) {
   const [open, setOpen] = useState(false);
@@ -15,9 +15,9 @@ export function TierInfoModal({ currentTierKey }: { currentTierKey: TierKey }) {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="티어 안내 보기"
-        className="btn-press touch-target flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+        className="btn-press touch-target flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-primary hover:bg-primary/10"
       >
-        🔍
+        <InfoIcon className="h-4 w-4" />
       </button>
 
       {open &&

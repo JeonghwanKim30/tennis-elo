@@ -37,6 +37,17 @@ export function doublesGenderMultiplier(genders: PlayerGender[]): number {
   return DOUBLES_GENDER_MULTIPLIER.MIXED_DOUBLES;
 }
 
+/**
+ * 남녀 단식(성별이 다른 단식) 경기에서 여성 유저의 점수에 더해주는 보너스 세트.
+ * 경기 목표 점수(두 팀 중 더 높은 점수 = 그 경기의 "몇 점 내기" 방식) 기준.
+ * 승패 판정 자체는 바꾸지 않고, ELO 계산에 쓰이는 점수 격차(MOV)에만 반영한다.
+ */
+export function femaleBonusPoints(targetScore: number): number {
+  if (targetScore <= 1) return 0;
+  if (targetScore <= 4) return 1;
+  return 2;
+}
+
 export function outcomeScore(outcome: MatchOutcome): number {
   if (outcome === "WIN") return 1;
   if (outcome === "LOSS") return 0;
