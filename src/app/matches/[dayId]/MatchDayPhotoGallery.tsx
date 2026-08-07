@@ -92,9 +92,22 @@ export function MatchDayPhotoGallery({
     }
   }
 
+  // 라이트박스에서 삭제하면 팝업이 그대로 닫히지 않고, 삭제된 자리에 있던
+  // "다음 사진"을 바로 보여준다(배열이 한 칸씩 당겨지므로 같은 인덱스를 유지하면
+  // 자연스럽게 다음 사진이 나온다). 다음 사진이 없으면(맨 끝을 지운 경우) 새로운
+  // 마지막 인덱스 = 이전 사진을 보여주고, 그마저도 없으면(전부 삭제) 팝업을 닫는다.
   function handleDelete(photoId: string) {
-    setPhotos((prev) => prev.filter((p) => p.id !== photoId));
-    setLightboxIndex(null);
+    setPhotos((prev) => {
+      const deletedIndex = prev.findIndex((p) => p.id === photoId);
+      const next = prev.filter((p) => p.id !== photoId);
+      setLightboxIndex((prevIndex) => {
+        if (prevIndex === null) return null;
+        if (next.length === 0) return null;
+        const anchor = deletedIndex === -1 ? prevIndex : deletedIndex;
+        return Math.min(anchor, next.length - 1);
+      });
+      return next;
+    });
     startTransition(() => {
       deleteMatchDayPhotoAction(photoId);
     });

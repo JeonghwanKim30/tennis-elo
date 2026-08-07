@@ -7,6 +7,9 @@ import { matchSubmitSchema } from "@/lib/validation";
 import { MAX_PHOTOS_PER_DAY } from "./photoConfig";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+// 시스템 전체 사진 총량 상한(DB 용량 부하 관리) — 초과분은 새 사진을 올릴 때
+// 가장 오래된 것부터 자동으로 밀려난다(FIFO).
+const MAX_TOTAL_PHOTOS = 500;
 
 export interface MatchDayPhotoState {
   error?: string;
@@ -38,8 +41,23 @@ export async function uploadMatchDayPhotoAction(
     return { error: `사진은 최대 ${MAX_PHOTOS_PER_DAY}장까지 등록할 수 있습니다.` };
   }
 
-  const photo = await prisma.matchDayPhoto.create({
-    data: { matchDayId: dayId, image: buffer, imageType: mimeType, uploadedBy: user.id },
+  const photo = await prisma.$transaction(async (tx) => {
+    // 전체 사진 총량이 상한에 도달했으면, 가장 오래된 사진부터 지워서 자리를
+    // 비운다(FIFO) — 그래야 오래 운영해도 DB 용량이 무한정 늘지 않는다.
+    const totalCount = await tx.matchDayPhoto.count();
+    if (totalCount >= MAX_TOTAL_PHOTOS) {
+      const toEvict = totalCount - MAX_TOTAL_PHOTOS + 1;
+      const oldest = await tx.matchDayPhoto.findMany({
+        orderBy: { createdAt: "asc" },
+        take: toEvict,
+        select: { id: true },
+      });
+      await tx.matchDayPhoto.deleteMany({ where: { id: { in: oldest.map((p) => p.id) } } });
+    }
+
+    return tx.matchDayPhoto.create({
+      data: { matchDayId: dayId, image: buffer, imageType: mimeType, uploadedBy: user.id },
+    });
   });
 
   revalidatePath(`/matches/${dayId}`);

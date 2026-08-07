@@ -58,6 +58,8 @@ export default async function MatchesPage({
           },
         },
       },
+      photos: { orderBy: { createdAt: "asc" }, take: 1 },
+      _count: { select: { photos: true } },
     },
   });
 
@@ -141,6 +143,10 @@ export default async function MatchesPage({
               name: p.user.name,
               avatarSrc: avatarSrc(p.user),
             })),
+          thumbnailSrc: d.photos[0]
+            ? `data:${d.photos[0].imageType};base64,${Buffer.from(d.photos[0].image).toString("base64")}`
+            : null,
+          photoCount: d._count.photos,
         }))}
         isAdmin={user?.role === "ADMIN"}
         deleteAction={deleteMatchDayAction}

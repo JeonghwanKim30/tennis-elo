@@ -15,6 +15,8 @@ export interface MatchDayListItem {
   time: string | null;
   location: string | null;
   attending: DayParticipant[];
+  thumbnailSrc: string | null;
+  photoCount: number;
 }
 
 // 경기 일자 카드 목록. 관리자에게만 카드 우측 상단에 삭제 버튼이 보이고,
@@ -77,15 +79,30 @@ export function MatchDayList({
               href={`/matches/${d.id}`}
               className={`btn-press block space-y-2.5 px-5 py-4 ${isAdmin ? "pr-14" : ""}`}
             >
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <span className="truncate font-medium">{d.dateLabel}</span>
-                <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                  {d.dDayLabel}
-                </span>
-                {(d.time || d.location) && (
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {[d.time, d.location].filter(Boolean).join(" · ")}
+              <div className="flex min-w-0 items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="truncate font-medium">{d.dateLabel}</span>
+                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                    {d.dDayLabel}
                   </span>
+                  {(d.time || d.location) && (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {[d.time, d.location].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
+                </div>
+                {d.thumbnailSrc && (
+                  <div className="relative shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={d.thumbnailSrc}
+                      alt=""
+                      className="h-10 w-10 rounded-lg border border-border object-cover"
+                    />
+                    <span className="absolute -top-1.5 -right-1.5 rounded-full bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                      📷{d.photoCount}
+                    </span>
+                  </div>
                 )}
               </div>
               <DayParticipantsPreview participants={d.attending} />
