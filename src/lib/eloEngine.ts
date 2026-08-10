@@ -4,6 +4,8 @@ import {
   doublesGenderMultiplier,
   singlesGenderMultiplier,
   applyCrossGenderSinglesBonus,
+  isCrossGenderSingles,
+  outcomeFromScores,
   INITIAL_RATING,
   type MatchOutcome,
   type PlayerGender,
@@ -74,14 +76,23 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
     const genderA = genderByUser.get(teamAIds[0])!;
     const genderB = genderByUser.get(teamBIds[0])!;
 
-    // 남녀 단식(성별이 다른 단식)이면 여성 쪽 점수에 보너스 세트를 더해서
-    // ELO 점수 격차(MOV) 계산에만 반영한다 — 승패 판정 자체는 그대로 둔다.
+    // 남녀 단식(성별이 다른 단식)이면 여성 쪽 점수에 보너스 세트를 더한다.
+    // 실제 경기 기록/전적(teamAScore, outcomeForTeamA로 계산되는 승/패
+    // 카운트)은 원래 스코어 그대로 두지만, ELO 연산 자체는 보너스가 반영된
+    // 스코어를 기준으로 승/패를 다시 판정해서 계산한다 — 그래야 보너스로
+    // 스코어 우열이 뒤집힌 경우(예: 5:4 -> 5:6) ELO에도 실제로 반영된다.
+    // (주의: MOV 배율은 |A-B| 절댓값만 보므로, 보너스가 격차의 "부호"만
+    // 뒤집고 크기는 그대로인 경우 MOV 자체는 안 변한다 — 그래서 승패
+    // 판정을 별도로 다시 하지 않으면 보너스가 있으나 마나였다.)
     const { scoreA, scoreB } = applyCrossGenderSinglesBonus(
       match.teamAScore,
       match.teamBScore,
       genderA,
       genderB
     );
+    const eloOutcomeForTeamA = isCrossGenderSingles(genderA, genderB)
+      ? outcomeFromScores(scoreA, scoreB)
+      : outcomeForTeamA;
 
     const eloResult = calculateSinglesElo(
       a.rating,
@@ -90,7 +101,7 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
       gamesPlayed(teamBIds[0]),
       scoreA,
       scoreB,
-      outcomeForTeamA,
+      eloOutcomeForTeamA,
       genderMultiplier
     );
     newRatings = new Map([

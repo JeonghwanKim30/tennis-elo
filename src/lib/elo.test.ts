@@ -9,6 +9,7 @@ import {
   isCrossGenderSingles,
   kFactorFor,
   movMultiplier,
+  outcomeFromScores,
   resolveTargetScore,
 } from "./elo";
 
@@ -227,6 +228,21 @@ describe("applyCrossGenderSinglesBonus", () => {
 
   it("applies +1 for a 4점 내기 mixed match", () => {
     expect(applyCrossGenderSinglesBonus(3, 4, "MALE", "FEMALE")).toEqual({ scoreA: 3, scoreB: 5 });
+  });
+});
+
+describe("outcomeFromScores", () => {
+  it("judges WIN/LOSS/DRAW purely from the two scores", () => {
+    expect(outcomeFromScores(5, 4)).toBe("WIN");
+    expect(outcomeFromScores(4, 5)).toBe("LOSS");
+    expect(outcomeFromScores(3, 3)).toBe("DRAW");
+  });
+
+  it("flips to LOSS once a bonus-adjusted score overtakes the raw leader (5:4 -> 5:6)", () => {
+    // 이게 이번에 고친 버그의 핵심 시나리오: 원 스코어는 5:4로 A가 앞섰지만,
+    // 보너스(+2)가 더해진 6이 A의 5를 넘어서면 ELO 판정은 A의 LOSS가 되어야 한다.
+    const { scoreA, scoreB } = applyCrossGenderSinglesBonus(5, 4, "MALE", "FEMALE");
+    expect(outcomeFromScores(scoreA, scoreB)).toBe("LOSS");
   });
 });
 

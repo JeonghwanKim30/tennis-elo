@@ -60,6 +60,13 @@ export function femaleBonusPoints(targetScore: number): number {
   return 2;
 }
 
+/** 두 점수를 비교해 self 기준 승/패/무를 판정한다. */
+export function outcomeFromScores(scoreForSelf: number, scoreForOpponent: number): MatchOutcome {
+  if (scoreForSelf > scoreForOpponent) return "WIN";
+  if (scoreForSelf < scoreForOpponent) return "LOSS";
+  return "DRAW";
+}
+
 /**
  * 남녀 단식이면 여성 쪽 점수에 femaleBonusPoints만큼 가상 보너스 세트를 더한
  * "ELO 계산 전용" 점수를 돌려준다. 실제 경기 기록/스코어판(teamAScore 등)에는
