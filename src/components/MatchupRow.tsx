@@ -14,6 +14,8 @@ export function MatchupRow({
   teamA2Tier,
   teamB1Tier,
   teamB2Tier,
+  teamAFooter,
+  teamBFooter,
   center,
 }: {
   type: MatchType;
@@ -29,32 +31,39 @@ export function MatchupRow({
   teamA2Tier?: Tier;
   teamB1Tier?: Tier;
   teamB2Tier?: Tier;
+  /** 점수 입력 스핀박스 등, 각 팀 영역 바로 아래에 넣을 내용(A팀/B팀 각각). */
+  teamAFooter?: React.ReactNode;
+  teamBFooter?: React.ReactNode;
   center?: React.ReactNode;
 }) {
-  // 복식(선수 4명 + 중앙 VS/스코어)은 좁은 화면에서 한 줄에 다 못 들어가 밖으로
-  // 삐져나오므로, 모바일에서는 A팀 → VS → B팀 순으로 세로로 쌓고 데스크톱
-  // 너비(sm 이상)에서만 기존처럼 한 줄로 펼친다.
+  // A팀(왼쪽) - VS/스코어(중앙) - B팀(오른쪽) 가로 대칭 구조를 화면 크기와
+  // 무관하게 항상 유지한다(복식도 팀원 2명을 세로로 쌓아 폭을 아끼므로 좁은
+  // 화면에서도 굳이 세로로 쌓을 필요가 없다).
   return (
-    <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex items-center justify-between gap-2">
       <TeamBadges
         type={type}
+        side="A"
         player1={teamA1}
         player2={teamA2}
         eloChange={teamAEloChange}
         player1Tier={teamA1Tier}
         player2Tier={teamA2Tier}
+        footer={teamAFooter}
       />
-      <div className="flex shrink-0 flex-col items-center gap-1 text-center">
+      <div className="flex shrink-0 flex-col items-center gap-1 px-1 text-center">
         <span className="text-sm font-semibold text-muted-foreground">VS</span>
         {center}
       </div>
       <TeamBadges
         type={type}
+        side="B"
         player1={teamB1}
         player2={teamB2}
         eloChange={teamBEloChange}
         player1Tier={teamB1Tier}
         player2Tier={teamB2Tier}
+        footer={teamBFooter}
       />
     </div>
   );

@@ -7,6 +7,7 @@ import { RESULT_LABEL } from "@/lib/matchDisplay";
 import { PlayerBadge } from "@/components/PlayerBadge";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { MatchupRow } from "@/components/MatchupRow";
+import { MatchScoreCard } from "@/components/MatchScoreCard";
 import { getTier, type Tier } from "@/lib/tier";
 import { computeDailyMvp } from "@/lib/mvp";
 import type { MatchType, ParticipationStatus } from "@/generated/prisma/client";
@@ -14,7 +15,7 @@ import { MatchComposerPanel } from "./MatchComposerPanel";
 import { AttendanceCarousel } from "./AttendanceCarousel";
 import { MvpModal } from "./MvpModal";
 import { MatchDayPhotoGallery } from "./MatchDayPhotoGallery";
-import { setParticipationStatusAction } from "./actions";
+import { setParticipationStatusAction, submitMatchScoreAction } from "./actions";
 
 const RSVP_LABEL: Record<ParticipationStatus, string> = {
   ATTENDING: "참여",
@@ -233,12 +234,34 @@ export default async function MatchDayPage({
               const b1 = playerById.get(m.teamBPlayer1);
               const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
               if (!a1 || !b1) return null;
+              const typeLabel = m.type === "SINGLES" ? "단식" : "복식";
+              const submitted = m.teamAScore !== null && m.teamBScore !== null;
+
+              if (!user) {
+                return (
+                  <li key={m.id} className="surface-card px-5 py-4">
+                    <p className="mb-2 text-sm text-muted-foreground">
+                      {typeLabel} · 점수 입력 대기 중
+                    </p>
+                    <MatchupRow
+                      type={m.type}
+                      teamA1={a1}
+                      teamA2={a2}
+                      teamB1={b1}
+                      teamB2={b2}
+                      teamA1Tier={tierFor(a1.id, m.type)}
+                      teamA2Tier={a2 ? tierFor(a2.id, m.type) : undefined}
+                      teamB1Tier={tierFor(b1.id, m.type)}
+                      teamB2Tier={b2 ? tierFor(b2.id, m.type) : undefined}
+                    />
+                  </li>
+                );
+              }
+
               return (
-                <li key={m.id} className="surface-card px-5 py-4">
-                  <p className="mb-2 text-sm text-muted-foreground">
-                    {m.type === "SINGLES" ? "단식" : "복식"} · 점수 입력 대기 중
-                  </p>
-                  <MatchupRow
+                <li key={m.id}>
+                  <MatchScoreCard
+                    action={submitMatchScoreAction.bind(null, m.id)}
                     type={m.type}
                     teamA1={a1}
                     teamA2={a2}
@@ -248,6 +271,10 @@ export default async function MatchDayPage({
                     teamA2Tier={a2 ? tierFor(a2.id, m.type) : undefined}
                     teamB1Tier={tierFor(b1.id, m.type)}
                     teamB2Tier={b2 ? tierFor(b2.id, m.type) : undefined}
+                    initialTeamAScore={m.teamAScore}
+                    initialTeamBScore={m.teamBScore}
+                    statusLabel={`${typeLabel} · ${submitted ? "제출됨 · 관리자 승인 대기" : "점수 입력 대기 중"}`}
+                    submitLabel="결과 제출"
                   />
                 </li>
               );

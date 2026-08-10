@@ -3,8 +3,8 @@ import { avatarSrc } from "@/lib/avatar";
 import { RESULT_LABEL } from "@/lib/matchDisplay";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { MatchupRow } from "@/components/MatchupRow";
-import { deleteMatchAction } from "./actions";
-import { ScoreForm } from "./ScoreForm";
+import { MatchScoreCard } from "@/components/MatchScoreCard";
+import { deleteMatchAction, enterMatchScoreAction } from "./actions";
 
 export async function ScoreSection() {
   const [scheduledMatches, completedMatches] = await Promise.all([
@@ -54,14 +54,23 @@ export async function ScoreSection() {
               const b1 = playerById.get(m.teamBPlayer1);
               const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
               if (!a1 || !b1) return null;
+              const typeLabel = m.type === "SINGLES" ? "단식" : "복식";
+              const dateLabel = m.matchDay.date.toISOString().slice(0, 10);
+              const submitted = m.teamAScore !== null && m.teamBScore !== null;
               return (
-                <li key={m.id} className="surface-card space-y-3 px-5 py-4">
-                  <p className="text-sm text-muted-foreground">
-                    {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
-                    {m.matchDay.date.toISOString().slice(0, 10)}
-                  </p>
-                  <MatchupRow type={m.type} teamA1={a1} teamA2={a2} teamB1={b1} teamB2={b2} />
-                  <ScoreForm matchId={m.id} />
+                <li key={m.id}>
+                  <MatchScoreCard
+                    action={enterMatchScoreAction.bind(null, m.id)}
+                    type={m.type}
+                    teamA1={a1}
+                    teamA2={a2}
+                    teamB1={b1}
+                    teamB2={b2}
+                    initialTeamAScore={m.teamAScore}
+                    initialTeamBScore={m.teamBScore}
+                    statusLabel={`${typeLabel} · ${dateLabel} · ${submitted ? "제출됨 · 승인 대기" : "미제출"}`}
+                    submitLabel="승인"
+                  />
                 </li>
               );
             })}

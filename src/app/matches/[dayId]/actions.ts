@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { matchSubmitSchema } from "@/lib/validation";
+import { matchSubmitSchema, matchScoreSchema } from "@/lib/validation";
 import { MAX_PHOTOS_PER_DAY } from "./photoConfig";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
@@ -149,4 +149,44 @@ export async function createMatchInDayAction(
   revalidatePath(`/matches/${dayId}`);
   revalidatePath("/matches");
   return {};
+}
+
+export interface SubmitScoreState {
+  error?: string;
+  success?: boolean;
+}
+
+// 예정된 경기의 점수를 "제안"으로 저장한다 — 경기 등록/참여 투표와 동일한
+// 권한 수준으로 로그인한 누구나 제출할 수 있다. 관리자가 최종 승인
+// (enterMatchScoreAction)하기 전까지는 status가 여전히 PENDING이고 ELO에
+// 반영되지 않는다 — 승인 전까지는 몇 번이든 다시 제출해 값을 바꿀 수 있다.
+export async function submitMatchScoreAction(
+  matchId: string,
+  _prevState: SubmitScoreState,
+  formData: FormData
+): Promise<SubmitScoreState> {
+  await requireUser();
+
+  const parsed = matchScoreSchema.safeParse({
+    teamAScore: formData.get("teamAScore"),
+    teamBScore: formData.get("teamBScore"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "점수를 확인해주세요." };
+  }
+
+  const match = await prisma.match.findUniqueOrThrow({ where: { id: matchId } });
+  if (match.status !== "PENDING") {
+    return { error: "이미 처리된 경기입니다." };
+  }
+
+  await prisma.match.update({
+    where: { id: matchId },
+    data: { teamAScore: parsed.data.teamAScore, teamBScore: parsed.data.teamBScore },
+  });
+
+  revalidatePath(`/matches/${match.matchDayId}`);
+  revalidatePath("/matches");
+  revalidatePath("/admin");
+  return { success: true };
 }
