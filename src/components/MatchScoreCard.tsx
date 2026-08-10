@@ -74,8 +74,8 @@ export function MatchScoreCard({
         teamA2Tier={teamA2Tier}
         teamB1Tier={teamB1Tier}
         teamB2Tier={teamB2Tier}
-        teamAFooter={<ScoreStepper name="teamAScore" defaultValue={initialTeamAScore ?? 0} />}
-        teamBFooter={<ScoreStepper name="teamBScore" defaultValue={initialTeamBScore ?? 0} />}
+        teamASideControl={<ScoreStepper name="teamAScore" defaultValue={initialTeamAScore ?? 0} />}
+        teamBSideControl={<ScoreStepper name="teamBScore" defaultValue={initialTeamBScore ?? 0} />}
       />
 
       {state.error && <p className="text-center text-xs text-destructive">{state.error}</p>}

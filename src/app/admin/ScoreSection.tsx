@@ -104,13 +104,11 @@ export async function ScoreSection() {
                     teamB2={b2}
                     teamAEloChange={m.teamAEloChange}
                     teamBEloChange={m.teamBEloChange}
-                    center={
-                      <span className="font-medium">
-                        {m.result ? RESULT_LABEL[m.result] : ""}
-                        {m.teamAScore !== null && m.teamBScore !== null
-                          ? ` (${m.teamAScore}:${m.teamBScore})`
-                          : ""}
-                      </span>
+                    resultLabel={m.result ? RESULT_LABEL[m.result] : undefined}
+                    scoreLabel={
+                      m.teamAScore !== null && m.teamBScore !== null
+                        ? `(${m.teamAScore}:${m.teamBScore})`
+                        : undefined
                     }
                   />
                   <form action={deleteMatchAction.bind(null, m.id)}>

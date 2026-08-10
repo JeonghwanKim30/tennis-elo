@@ -32,7 +32,7 @@ export function TeamBadges({
   eloChange,
   player1Tier,
   player2Tier,
-  footer,
+  sideControl,
 }: {
   type: MatchType;
   /** A팀은 카드 왼쪽(ELO 배지가 프로필 바깥쪽=왼쪽), B팀은 오른쪽(배지가 바깥쪽=오른쪽). */
@@ -44,8 +44,9 @@ export function TeamBadges({
   /** 해당 경기 종목(단식/복식) 기준 각 선수의 현재 티어 — 있으면 아바타에 색 링으로 표시. */
   player1Tier?: Tier;
   player2Tier?: Tier;
-  /** 점수 입력 스핀박스 등, 팀 영역 하단에 추가로 넣을 내용. */
-  footer?: React.ReactNode;
+  /** 완료된 경기의 ELO 배지와 같은 자리(팀 바깥쪽)에 대신 넣는 컨트롤 —
+   *  예정된 경기의 세로형 점수 스테퍼. 팀원 수와 무관하게 팀당 하나. */
+  sideControl?: React.ReactNode;
 }) {
   const showElo = eloChange !== undefined && eloChange !== null;
   const players =
@@ -57,14 +58,16 @@ export function TeamBadges({
       : [{ player: player1, tier: player1Tier }];
 
   return (
-    <div className={`flex flex-col gap-2 ${side === "A" ? "items-start" : "items-end"}`}>
-      {players.map(({ player, tier }) => (
-        <div key={player.id} className={`flex items-center gap-1.5 ${side === "B" ? "flex-row-reverse" : ""}`}>
-          {showElo && <EloChangeBadge value={eloChange} />}
-          <PlayerBadge avatarSrc={player.avatarSrc} name={player.name} userId={player.id} tier={tier} />
-        </div>
-      ))}
-      {footer && <div className="mt-1 self-center">{footer}</div>}
+    <div className={`flex min-w-0 items-center gap-1.5 ${side === "B" ? "flex-row-reverse" : ""}`}>
+      {sideControl}
+      <div className={`flex min-w-0 flex-col gap-2 ${side === "A" ? "items-start" : "items-end"}`}>
+        {players.map(({ player, tier }) => (
+          <div key={player.id} className={`flex items-center gap-1.5 ${side === "B" ? "flex-row-reverse" : ""}`}>
+            {showElo && <EloChangeBadge value={eloChange} />}
+            <PlayerBadge avatarSrc={player.avatarSrc} name={player.name} userId={player.id} tier={tier} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

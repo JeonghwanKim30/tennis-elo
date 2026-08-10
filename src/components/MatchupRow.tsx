@@ -14,9 +14,10 @@ export function MatchupRow({
   teamA2Tier,
   teamB1Tier,
   teamB2Tier,
-  teamAFooter,
-  teamBFooter,
-  center,
+  teamASideControl,
+  teamBSideControl,
+  resultLabel,
+  scoreLabel,
 }: {
   type: MatchType;
   teamA1: TeamPlayer;
@@ -31,16 +32,20 @@ export function MatchupRow({
   teamA2Tier?: Tier;
   teamB1Tier?: Tier;
   teamB2Tier?: Tier;
-  /** 점수 입력 스핀박스 등, 각 팀 영역 바로 아래에 넣을 내용(A팀/B팀 각각). */
-  teamAFooter?: React.ReactNode;
-  teamBFooter?: React.ReactNode;
-  center?: React.ReactNode;
+  /** ELO 배지와 같은 자리(팀 바깥쪽)에 대신 넣는 컨트롤 — 예정된 경기의 점수 스테퍼. */
+  teamASideControl?: React.ReactNode;
+  teamBSideControl?: React.ReactNode;
+  /** "A팀 승" 등 승패 결과 한 줄. */
+  resultLabel?: string;
+  /** "(3:2)" 등 스코어 한 줄. */
+  scoreLabel?: string;
 }) {
   // A팀(왼쪽) - VS/스코어(중앙) - B팀(오른쪽) 가로 대칭 구조를 화면 크기와
-  // 무관하게 항상 유지한다(복식도 팀원 2명을 세로로 쌓아 폭을 아끼므로 좁은
-  // 화면에서도 굳이 세로로 쌓을 필요가 없다).
+  // 무관하게 항상 유지한다. 가운데 칸을 grid의 1fr로 못박아 두면, 결과
+  // 텍스트가 아무리 길어도 그 칸 폭을 넘어서 양옆 ELO 배지를 카드 밖으로
+  // 밀어내는 일이 없다(좌우 칸은 auto라 내용 폭만큼만 차지).
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
       <TeamBadges
         type={type}
         side="A"
@@ -49,11 +54,12 @@ export function MatchupRow({
         eloChange={teamAEloChange}
         player1Tier={teamA1Tier}
         player2Tier={teamA2Tier}
-        footer={teamAFooter}
+        sideControl={teamASideControl}
       />
-      <div className="flex shrink-0 flex-col items-center gap-1 px-1 text-center">
-        <span className="text-sm font-semibold text-muted-foreground">VS</span>
-        {center}
+      <div className="flex min-w-0 flex-col items-center gap-0.5 px-1 text-center">
+        {resultLabel && <span className="truncate text-sm font-semibold">{resultLabel}</span>}
+        <span className="text-xs font-semibold text-muted-foreground">VS</span>
+        {scoreLabel && <span className="truncate text-xs text-muted-foreground">{scoreLabel}</span>}
       </div>
       <TeamBadges
         type={type}
@@ -63,7 +69,7 @@ export function MatchupRow({
         eloChange={teamBEloChange}
         player1Tier={teamB1Tier}
         player2Tier={teamB2Tier}
-        footer={teamBFooter}
+        sideControl={teamBSideControl}
       />
     </div>
   );

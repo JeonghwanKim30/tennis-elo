@@ -325,13 +325,11 @@ export default async function MatchDayPage({
                     teamA2Tier={a2 ? tierFor(a2.id, m.type) : undefined}
                     teamB1Tier={tierFor(b1.id, m.type)}
                     teamB2Tier={b2 ? tierFor(b2.id, m.type) : undefined}
-                    center={
-                      <span className="font-medium">
-                        {m.result ? RESULT_LABEL[m.result] : ""}
-                        {m.teamAScore !== null && m.teamBScore !== null
-                          ? ` (${m.teamAScore}:${m.teamBScore})`
-                          : ""}
-                      </span>
+                    resultLabel={m.result ? RESULT_LABEL[m.result] : undefined}
+                    scoreLabel={
+                      m.teamAScore !== null && m.teamBScore !== null
+                        ? `(${m.teamAScore}:${m.teamBScore})`
+                        : undefined
                     }
                   />
                 </li>
