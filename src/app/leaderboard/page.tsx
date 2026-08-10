@@ -147,8 +147,12 @@ function RankingTable({
                   <span className="min-w-0 truncate font-medium">{r.user.name}</span>
                   {placement ? <PlacementBadge size="sm" /> : <TierBadge tier={getTier(r.rating)} size="sm" />}
                 </Link>
-                <span className="font-display shrink-0 text-lg leading-none font-semibold text-primary">
-                  {Math.round(r.rating)}
+                <span
+                  className={`font-display shrink-0 text-lg leading-none font-semibold ${
+                    placement ? "text-sm text-muted-foreground" : "text-primary"
+                  }`}
+                >
+                  {placement ? "배치 중" : Math.round(r.rating)}
                 </span>
                 <span className="w-full shrink-0 pl-11 text-sm leading-relaxed text-muted-foreground sm:w-auto sm:pl-0">
                   {r.wins}승 {r.losses}패 {r.draws}무
