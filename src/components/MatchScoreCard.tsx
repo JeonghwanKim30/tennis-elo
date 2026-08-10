@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useId } from "react";
 import { MatchupRow } from "@/components/MatchupRow";
 import { ScoreStepper } from "@/components/ScoreStepper";
 import { SquareDeleteButton } from "@/components/SquareDeleteButton";
@@ -17,9 +17,10 @@ const initialState: ScoreActionState = {};
 
 // 예정된 경기의 점수 입력 카드 — 일반 유저의 "결과 제출"과 관리자의 "승인"
 // 양쪽에서 공용으로 쓴다(레이아웃/스텝퍼는 동일, action과 버튼 문구만 다름).
-// deleteAction을 주면(관리자 전용) 카드 모서리에 네모 X 삭제 버튼이 붙는다 —
-// 점수 제출용 <form>과는 형제로 분리해 렌더링한다(<form> 중첩은 브라우저가
-// 조용히 안쪽 제출을 무시해버리는 문제가 있어 이 프로젝트에서 항상 피한다).
+// deleteAction을 주면(관리자 전용) 우상단에 작은 초록 X 삭제 버튼이 제출
+// 버튼 바로 오른쪽에 붙는다. 삭제용 <form>과 점수 제출용 <form>은 서로 중첩되면
+// 안 되므로(브라우저가 안쪽 제출을 조용히 무시함) 형제로 분리하고, 제출
+// 버튼은 form="..." 속성으로 자기 <form> 밖에서도 같은 자리에 나란히 놓는다.
 export function MatchScoreCard({
   action,
   deleteAction,
@@ -56,23 +57,26 @@ export function MatchScoreCard({
   pendingLabel?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initialState);
+  const formId = useId();
 
   return (
-    <div className="surface-card relative space-y-3 px-5 py-4">
-      {deleteAction && <SquareDeleteButton action={deleteAction} label="경기 삭제" />}
-
-      <form action={formAction} className="space-y-3">
-        <div className={`flex items-center justify-between gap-2 ${deleteAction ? "pr-9" : ""}`}>
-          <p className="text-sm text-muted-foreground">{statusLabel}</p>
+    <div className="surface-card space-y-3 px-5 py-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">{statusLabel}</p>
+        <div className="flex shrink-0 items-center gap-1.5">
           <button
             type="submit"
+            form={formId}
             disabled={pending}
-            className="btn-press touch-target shrink-0 rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-white shadow-sm shadow-primary/25 disabled:opacity-50"
+            className="btn-press touch-target rounded-full bg-primary px-3 py-1 text-xs font-medium text-white shadow-sm shadow-primary/25 disabled:opacity-50"
           >
             {pending ? pendingLabel : submitLabel}
           </button>
+          {deleteAction && <SquareDeleteButton action={deleteAction} label="경기 삭제" />}
         </div>
+      </div>
 
+      <form id={formId} action={formAction} className="space-y-3">
         <MatchupRow
           type={type}
           teamA1={teamA1}

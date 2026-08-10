@@ -93,12 +93,14 @@ export async function ScoreSection() {
               const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
               if (!a1 || !b1) return null;
               return (
-                <li key={m.id} className="surface-card relative space-y-3 px-5 py-4">
-                  <SquareDeleteButton action={deleteMatchAction.bind(null, m.id)} label="경기 삭제" />
-                  <p className="pr-9 text-sm text-muted-foreground">
-                    {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
-                    {m.matchDay.date.toISOString().slice(0, 10)}
-                  </p>
+                <li key={m.id} className="surface-card space-y-3 px-5 py-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
+                      {m.matchDay.date.toISOString().slice(0, 10)}
+                    </p>
+                    <SquareDeleteButton action={deleteMatchAction.bind(null, m.id)} label="경기 삭제" />
+                  </div>
                   <MatchupRow
                     type={m.type}
                     teamA1={a1}
