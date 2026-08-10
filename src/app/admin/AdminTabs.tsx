@@ -1,12 +1,13 @@
 import Link from "next/link";
 
-export type AdminTab = "register" | "score" | "signups" | "users";
+export type AdminTab = "register" | "score" | "signups" | "users" | "notice";
 
 const TABS: { key: AdminTab; label: string }[] = [
   { key: "register", label: "경기 등록" },
   { key: "score", label: "경기 승패 입력" },
   { key: "signups", label: "가입 승인" },
   { key: "users", label: "유저 관리" },
+  { key: "notice", label: "공지설정" },
 ];
 
 export function AdminTabs({ active }: { active: AdminTab }) {

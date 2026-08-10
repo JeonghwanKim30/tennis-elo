@@ -7,6 +7,8 @@ import { requireAdmin } from "@/lib/session";
 import { INITIAL_RATING } from "@/lib/elo";
 import { applyEloForMatch, recalculateAllElo } from "@/lib/eloEngine";
 import { matchScoreSchema } from "@/lib/validation";
+import { getKakaoOptedInUserIds, sendKakaoMessage } from "@/lib/kakao";
+import { buildMatchCreatedMessage, getNoticeSettings } from "@/lib/notice";
 import type { MatchResult } from "@/generated/prisma/client";
 
 export interface MatchScoreState {
@@ -51,6 +53,17 @@ export async function createMatchDayAction(
   const day = await prisma.matchDay.create({
     data: { date, time, location, createdBy: admin.id },
   });
+
+  // 경기 등록 카카오톡 알림 — 관리자가 공지설정 탭에서 꺼두었으면 보내지 않는다.
+  const noticeSettings = await getNoticeSettings();
+  if (noticeSettings.matchCreatedAlarmOn) {
+    const message = buildMatchCreatedMessage(day.id, day.date, day.time, day.location);
+    const recipientIds = await getKakaoOptedInUserIds();
+    for (const userId of recipientIds) {
+      await sendKakaoMessage({ type: "MATCH_CREATED", userId, message, matchDayId: day.id });
+    }
+  }
+
   redirect(`/matches/${day.id}`);
 }
 

@@ -14,6 +14,7 @@ export function MvpModal({
   totalEloGain,
   wins,
   losses,
+  autoOpen = false,
 }: {
   dateLabel: string;
   name: string;
@@ -22,8 +23,10 @@ export function MvpModal({
   totalEloGain: number;
   wins: number;
   losses: number;
+  /** 카카오톡 MVP 알림의 딥링크(?openMvp=1)로 들어왔을 때 팝업을 바로 열어준다. */
+  autoOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
 
   return (
     <>

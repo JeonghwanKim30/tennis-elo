@@ -134,6 +134,18 @@ export function InfoIcon({ className }: IconProps) {
   );
 }
 
+// 카카오 브랜드 말풍선 — 다른 아이콘들과 달리 채워진 형태(fill)로 그린다.
+export function KakaoTalkIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className}>
+      <path
+        fill="currentColor"
+        d="M12 3.5C6.75 3.5 2.5 6.86 2.5 11c0 2.66 1.77 4.99 4.44 6.33-.2.72-.71 2.58-.82 2.98-.13.5.18.49.38.36.16-.1 2.53-1.72 3.56-2.42.63.09 1.28.14 1.94.14 5.25 0 9.5-3.36 9.5-7.5S17.25 3.5 12 3.5Z"
+      />
+    </svg>
+  );
+}
+
 export function HomeIcon({ className }: IconProps) {
   return (
     <svg {...common} className={className}>

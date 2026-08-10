@@ -1,11 +1,12 @@
 import { requireAdmin } from "@/lib/session";
 import { AdminTabs, type AdminTab } from "./AdminTabs";
+import { NoticeSettingsSection } from "./NoticeSettingsSection";
 import { RegisterSection } from "./RegisterSection";
 import { ScoreSection } from "./ScoreSection";
 import { SignupsSection } from "./SignupsSection";
 import { UserManagementSection } from "./UserManagementSection";
 
-const VALID_TABS: AdminTab[] = ["register", "score", "signups", "users"];
+const VALID_TABS: AdminTab[] = ["register", "score", "signups", "users", "notice"];
 
 export default async function AdminPage({
   searchParams,
@@ -25,6 +26,7 @@ export default async function AdminPage({
       {tab === "score" && <ScoreSection />}
       {tab === "signups" && <SignupsSection />}
       {tab === "users" && <UserManagementSection currentAdminId={admin.id} />}
+      {tab === "notice" && <NoticeSettingsSection />}
     </main>
   );
 }
