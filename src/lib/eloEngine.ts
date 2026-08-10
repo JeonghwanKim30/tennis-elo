@@ -3,7 +3,7 @@ import {
   calculateSinglesElo,
   doublesGenderMultiplier,
   singlesGenderMultiplier,
-  femaleBonusPoints,
+  applyCrossGenderSinglesBonus,
   INITIAL_RATING,
   type MatchOutcome,
   type PlayerGender,
@@ -76,13 +76,12 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
 
     // 남녀 단식(성별이 다른 단식)이면 여성 쪽 점수에 보너스 세트를 더해서
     // ELO 점수 격차(MOV) 계산에만 반영한다 — 승패 판정 자체는 그대로 둔다.
-    let scoreA = match.teamAScore;
-    let scoreB = match.teamBScore;
-    if (genderA !== genderB) {
-      const bonus = femaleBonusPoints(Math.max(match.teamAScore, match.teamBScore));
-      if (genderA === "FEMALE") scoreA += bonus;
-      else scoreB += bonus;
-    }
+    const { scoreA, scoreB } = applyCrossGenderSinglesBonus(
+      match.teamAScore,
+      match.teamBScore,
+      genderA,
+      genderB
+    );
 
     const eloResult = calculateSinglesElo(
       a.rating,

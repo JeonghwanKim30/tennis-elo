@@ -37,15 +37,50 @@ export function doublesGenderMultiplier(genders: PlayerGender[]): number {
   return DOUBLES_GENDER_MULTIPLIER.MIXED_DOUBLES;
 }
 
+/** 남녀 단식(성별이 다른 단식) 여부. */
+export function isCrossGenderSingles(genderA: PlayerGender, genderB: PlayerGender): boolean {
+  return genderA !== genderB;
+}
+
+// 경기 등록 시 별도의 "몇 점 내기"(승리 기준 세트) 입력을 받지 않으므로, 실제로
+// 입력된 두 점수 중 더 큰 값을 승리 기준 세트(targetScore)로 자동 판별한다.
+// 예: 3:5 -> 5, 3:4 -> 4, 3:3(무승부) -> 3.
+export function resolveTargetScore(scoreA: number, scoreB: number): number {
+  return Math.max(scoreA, scoreB);
+}
+
 /**
  * 남녀 단식(성별이 다른 단식) 경기에서 여성 유저의 점수에 더해주는 보너스 세트.
- * 경기 목표 점수(두 팀 중 더 높은 점수 = 그 경기의 "몇 점 내기" 방식) 기준.
+ * resolveTargetScore로 자동 판별한 승리 기준 세트 기준.
  * 승패 판정 자체는 바꾸지 않고, ELO 계산에 쓰이는 점수 격차(MOV)에만 반영한다.
  */
 export function femaleBonusPoints(targetScore: number): number {
   if (targetScore <= 1) return 0;
   if (targetScore <= 4) return 1;
   return 2;
+}
+
+/**
+ * 남녀 단식이면 여성 쪽 점수에 femaleBonusPoints만큼 가상 보너스 세트를 더한
+ * "ELO 계산 전용" 점수를 돌려준다. 실제 경기 기록/스코어판(teamAScore 등)에는
+ * 전혀 영향을 주지 않고, calculateSinglesElo에 넘기는 입력값에만 쓰인다.
+ * 동성 매치면 원래 점수를 그대로 돌려준다.
+ */
+export function applyCrossGenderSinglesBonus(
+  scoreA: number,
+  scoreB: number,
+  genderA: PlayerGender,
+  genderB: PlayerGender
+): { scoreA: number; scoreB: number } {
+  if (!isCrossGenderSingles(genderA, genderB)) return { scoreA, scoreB };
+
+  const targetScore = resolveTargetScore(scoreA, scoreB);
+  const bonus = femaleBonusPoints(targetScore);
+
+  return {
+    scoreA: genderA === "FEMALE" ? scoreA + bonus : scoreA,
+    scoreB: genderB === "FEMALE" ? scoreB + bonus : scoreB,
+  };
 }
 
 export function outcomeScore(outcome: MatchOutcome): number {

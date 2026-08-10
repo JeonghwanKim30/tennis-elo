@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyCrossGenderSinglesBonus,
   calculateDoublesElo,
   calculateEloChange,
   calculateSinglesElo,
   expectedScore,
+  femaleBonusPoints,
+  isCrossGenderSingles,
   kFactorFor,
   movMultiplier,
+  resolveTargetScore,
 } from "./elo";
 
 describe("expectedScore", () => {
@@ -165,6 +169,64 @@ describe("calculateSinglesElo", () => {
     const result = calculateSinglesElo(1200, 0, 1200, 0, 6, 4, "WIN");
     expect(result.ratingA).toBe(1218);
     expect(result.ratingB).toBe(1182);
+  });
+});
+
+describe("isCrossGenderSingles", () => {
+  it("is true only when the two singles players' genders differ", () => {
+    expect(isCrossGenderSingles("MALE", "FEMALE")).toBe(true);
+    expect(isCrossGenderSingles("FEMALE", "MALE")).toBe(true);
+    expect(isCrossGenderSingles("MALE", "MALE")).toBe(false);
+    expect(isCrossGenderSingles("FEMALE", "FEMALE")).toBe(false);
+  });
+});
+
+describe("resolveTargetScore", () => {
+  it("picks the higher of the two scores as the winning target", () => {
+    expect(resolveTargetScore(3, 5)).toBe(5);
+    expect(resolveTargetScore(4, 3)).toBe(4);
+  });
+
+  it("falls back to the tied score on a draw", () => {
+    expect(resolveTargetScore(3, 3)).toBe(3);
+  });
+});
+
+describe("femaleBonusPoints", () => {
+  it("gives no bonus for a 1점 내기(sudden-death) match", () => {
+    expect(femaleBonusPoints(1)).toBe(0);
+  });
+
+  it("gives +1 for a 2~4점 내기 match", () => {
+    expect(femaleBonusPoints(2)).toBe(1);
+    expect(femaleBonusPoints(4)).toBe(1);
+  });
+
+  it("gives +2 for a 5점 이상 내기 match", () => {
+    expect(femaleBonusPoints(5)).toBe(2);
+    expect(femaleBonusPoints(11)).toBe(2);
+  });
+});
+
+describe("applyCrossGenderSinglesBonus", () => {
+  it("leaves scores untouched for a same-gender singles match", () => {
+    expect(applyCrossGenderSinglesBonus(3, 5, "MALE", "MALE")).toEqual({ scoreA: 3, scoreB: 5 });
+    expect(applyCrossGenderSinglesBonus(3, 5, "FEMALE", "FEMALE")).toEqual({ scoreA: 3, scoreB: 5 });
+  });
+
+  it("adds the bonus to whichever side is FEMALE, regardless of A/B position", () => {
+    // 3:5 -> targetScore 5 -> bonus +2, female is side B
+    expect(applyCrossGenderSinglesBonus(3, 5, "MALE", "FEMALE")).toEqual({ scoreA: 3, scoreB: 7 });
+    // same match, female is side A instead
+    expect(applyCrossGenderSinglesBonus(5, 3, "FEMALE", "MALE")).toEqual({ scoreA: 7, scoreB: 3 });
+  });
+
+  it("applies no bonus for a 1점 내기 mixed match", () => {
+    expect(applyCrossGenderSinglesBonus(0, 1, "MALE", "FEMALE")).toEqual({ scoreA: 0, scoreB: 1 });
+  });
+
+  it("applies +1 for a 4점 내기 mixed match", () => {
+    expect(applyCrossGenderSinglesBonus(3, 4, "MALE", "FEMALE")).toEqual({ scoreA: 3, scoreB: 5 });
   });
 });
 
