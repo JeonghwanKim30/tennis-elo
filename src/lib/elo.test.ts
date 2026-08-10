@@ -260,17 +260,25 @@ describe("distributeDoublesDelta", () => {
     const [aboveAvg, belowAvg] = distributeDoublesDelta([1400, 1000], 20);
     expect(aboveAvg).toBeLessThan(20);
     expect(belowAvg).toBeGreaterThan(20);
-    expect(aboveAvg).toBe(19);
-    expect(belowAvg).toBe(21);
+    expect(aboveAvg).toBe(10);
+    expect(belowAvg).toBe(30);
     expect(aboveAvg + belowAvg).toBe(40); // 팀 델타*2로 합 보존
   });
 
   it("on a loss, makes the above-average teammate lose more and the below-average teammate lose less", () => {
     const [aboveAvg, belowAvg] = distributeDoublesDelta([1400, 1000], -20);
     expect(aboveAvg).toBeLessThan(belowAvg); // 더 많이 잃음(더 음수)
-    expect(aboveAvg).toBe(-21);
-    expect(belowAvg).toBe(-19);
+    expect(aboveAvg).toBe(-30);
+    expect(belowAvg).toBe(-10);
     expect(aboveAvg + belowAvg).toBe(-40);
+  });
+
+  it("still produces a visibly different split for a realistic club-level gap (140) instead of rounding away to identical values", () => {
+    // 실제 버그 리포트 시나리오 재현: 140점 격차의 두 선수가 팀 델타 10을
+    // 나눠 가질 때 예전 공식(팀 평균으로 나눔)은 둘 다 10으로 반올림돼버렸다.
+    const [higherRated, lowerRated] = distributeDoublesDelta([1340, 1200], 10);
+    expect(higherRated).not.toBe(lowerRated);
+    expect(lowerRated).toBeGreaterThan(higherRated);
   });
 });
 

@@ -204,7 +204,14 @@ export interface PlayerEloInput {
 }
 
 // 팀 델타를 팀원 개인 레이팅 차이에 따라 차등 배분할 때 쓰는 보정 계수.
-const DOUBLES_INDIVIDUAL_WEIGHT_ALPHA = 0.25;
+const DOUBLES_INDIVIDUAL_WEIGHT_ALPHA = 1.0;
+// 레이팅 격차를 정규화하는 기준값 — expectedScore()의 /400과 같은 기준을
+// 쓴다. 예전엔 팀 평균 레이팅(1200~1600대)으로 나눴는데, 그러면 흔한
+// 격차(100~150점)가 평균 대비 겨우 8~12%로 작게 취급돼 가중치 차이가
+// 1~2%밖에 안 나고, 그 결과 delta 10~20 같은 흔한 팀 델타에서는 0.x점
+// 차이가 정수 반올림에 묻혀 둘 다 완전히 같은 값으로 나오는 버그가 있었다
+// (예: 140점 격차 + 팀 델타 10 -> 실제로는 둘 다 +10으로 반올림됨).
+const DOUBLES_GAP_REFERENCE = 400;
 
 /**
  * 복식 팀 델타(팀 평균 레이팅 기준으로 산출된 값 — 예전엔 팀원 둘에게 그대로
@@ -222,12 +229,13 @@ export function distributeDoublesDelta(
   alpha: number = DOUBLES_INDIVIDUAL_WEIGHT_ALPHA
 ): [number, number] {
   const [r1, r2] = ratings;
+  if (teamDelta === 0) return [teamDelta, teamDelta];
   const avg = (r1 + r2) / 2;
-  if (teamDelta === 0 || avg === 0) return [teamDelta, teamDelta];
 
   const isGain = teamDelta > 0;
   // 음수 가중치(극단적인 레이팅 격차)로 배분 방향이 뒤집히지 않도록 0 이상으로 고정한다.
-  const weightOf = (r: number) => Math.max(0, 1 + alpha * ((isGain ? avg - r : r - avg) / avg));
+  const weightOf = (r: number) =>
+    Math.max(0, 1 + alpha * ((isGain ? avg - r : r - avg) / DOUBLES_GAP_REFERENCE));
 
   const w1 = weightOf(r1);
   const w2 = weightOf(r2);

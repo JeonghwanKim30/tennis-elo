@@ -44,8 +44,9 @@ export function TeamBadges({
   /** 해당 경기 종목(단식/복식) 기준 각 선수의 현재 티어 — 있으면 아바타에 색 링으로 표시. */
   player1Tier?: Tier;
   player2Tier?: Tier;
-  /** 완료된 경기의 ELO 배지와 같은 자리(팀 바깥쪽)에 대신 넣는 컨트롤 —
-   *  예정된 경기의 세로형 점수 스테퍼. 팀원 수와 무관하게 팀당 하나. */
+  /** 예정된 경기의 세로형 점수 스테퍼 — [프로필]과 [VS] 사이(팀 안쪽)에
+   *  배치한다(완료된 경기의 ELO 배지는 계속 프로필 바깥쪽에 남는다).
+   *  팀원 수와 무관하게 팀당 하나. */
   sideControl?: React.ReactNode;
 }) {
   const showElo = eloChange !== undefined && eloChange !== null;
@@ -57,17 +58,34 @@ export function TeamBadges({
         ]
       : [{ player: player1, tier: player1Tier }];
 
+  const playerStack = (
+    <div className={`flex min-w-0 flex-col gap-2 ${side === "A" ? "items-start" : "items-end"}`}>
+      {players.map(({ player, tier }) => (
+        <div key={player.id} className={`flex items-center gap-1.5 ${side === "B" ? "flex-row-reverse" : ""}`}>
+          {showElo && <EloChangeBadge value={eloChange} />}
+          <PlayerBadge avatarSrc={player.avatarSrc} name={player.name} userId={player.id} tier={tier} />
+        </div>
+      ))}
+    </div>
+  );
+
+  // A팀은 [프로필(바깥쪽)] [스코어 컨트롤(안쪽, VS 옆)] 순, B팀은 반대로
+  // [스코어 컨트롤(안쪽)] [프로필(바깥쪽)] 순 — 이 컴포넌트 자신은 항상 A는
+  // 카드 왼쪽, B는 오른쪽 칸에 들어가므로, "먼저 나오는 쪽"이 그 팀 기준
+  // 바깥쪽이다.
   return (
-    <div className={`flex min-w-0 items-center gap-1.5 ${side === "B" ? "flex-row-reverse" : ""}`}>
-      {sideControl}
-      <div className={`flex min-w-0 flex-col gap-2 ${side === "A" ? "items-start" : "items-end"}`}>
-        {players.map(({ player, tier }) => (
-          <div key={player.id} className={`flex items-center gap-1.5 ${side === "B" ? "flex-row-reverse" : ""}`}>
-            {showElo && <EloChangeBadge value={eloChange} />}
-            <PlayerBadge avatarSrc={player.avatarSrc} name={player.name} userId={player.id} tier={tier} />
-          </div>
-        ))}
-      </div>
+    <div className="flex min-w-0 items-center gap-2">
+      {side === "A" ? (
+        <>
+          {playerStack}
+          {sideControl}
+        </>
+      ) : (
+        <>
+          {sideControl}
+          {playerStack}
+        </>
+      )}
     </div>
   );
 }

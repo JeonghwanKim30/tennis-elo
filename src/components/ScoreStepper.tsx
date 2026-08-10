@@ -26,18 +26,18 @@ export function ScoreStepper({
         type="button"
         onClick={() => setValue((v) => clamp(v + 1))}
         aria-label={`${label} 점수 증가`}
-        className="btn-press touch-target flex h-7 w-8 items-center justify-center bg-muted text-sm font-bold text-foreground/70 active:bg-primary/10"
+        className="btn-press touch-target flex h-7 w-10 items-center justify-center bg-muted text-sm font-bold text-foreground/70 active:bg-primary/10"
       >
         +
       </button>
-      <div className="flex h-11 w-8 items-center justify-center border-y border-border bg-card font-display text-lg font-bold text-primary">
-        {value}
+      <div className="flex h-14 w-10 items-center justify-center border-y border-border bg-card">
+        <span className="font-display text-3xl leading-none font-extrabold text-primary">{value}</span>
       </div>
       <button
         type="button"
         onClick={() => setValue((v) => clamp(v - 1))}
         aria-label={`${label} 점수 감소`}
-        className="btn-press touch-target flex h-7 w-8 items-center justify-center bg-muted text-sm font-bold text-foreground/70 active:bg-primary/10"
+        className="btn-press touch-target flex h-7 w-10 items-center justify-center bg-muted text-sm font-bold text-foreground/70 active:bg-primary/10"
       >
         −
       </button>

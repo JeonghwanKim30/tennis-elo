@@ -4,6 +4,7 @@ import { RESULT_LABEL } from "@/lib/matchDisplay";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { MatchupRow } from "@/components/MatchupRow";
 import { MatchScoreCard } from "@/components/MatchScoreCard";
+import { SquareDeleteButton } from "@/components/SquareDeleteButton";
 import { deleteMatchAction, enterMatchScoreAction } from "./actions";
 
 export async function ScoreSection() {
@@ -61,6 +62,7 @@ export async function ScoreSection() {
                 <li key={m.id}>
                   <MatchScoreCard
                     action={enterMatchScoreAction.bind(null, m.id)}
+                    deleteAction={deleteMatchAction.bind(null, m.id)}
                     type={m.type}
                     teamA1={a1}
                     teamA2={a2}
@@ -91,8 +93,9 @@ export async function ScoreSection() {
               const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
               if (!a1 || !b1) return null;
               return (
-                <li key={m.id} className="surface-card space-y-3 px-5 py-4">
-                  <p className="text-sm text-muted-foreground">
+                <li key={m.id} className="surface-card relative space-y-3 px-5 py-4">
+                  <SquareDeleteButton action={deleteMatchAction.bind(null, m.id)} label="경기 삭제" />
+                  <p className="pr-9 text-sm text-muted-foreground">
                     {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
                     {m.matchDay.date.toISOString().slice(0, 10)}
                   </p>
@@ -111,11 +114,6 @@ export async function ScoreSection() {
                         : undefined
                     }
                   />
-                  <form action={deleteMatchAction.bind(null, m.id)}>
-                    <button className="btn-press touch-target rounded-full bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive">
-                      삭제
-                    </button>
-                  </form>
                 </li>
               );
             })}
