@@ -4,6 +4,7 @@ import {
   calculateDoublesElo,
   calculateEloChange,
   calculateSinglesElo,
+  distributeDoublesDelta,
   expectedScore,
   femaleBonusPoints,
   isCrossGenderSingles,
@@ -246,8 +247,35 @@ describe("outcomeFromScores", () => {
   });
 });
 
+describe("distributeDoublesDelta", () => {
+  it("splits evenly when both teammates have the same rating", () => {
+    expect(distributeDoublesDelta([1200, 1200], 16)).toEqual([16, 16]);
+  });
+
+  it("returns [0, 0] when the team delta is zero", () => {
+    expect(distributeDoublesDelta([1400, 1000], 0)).toEqual([0, 0]);
+  });
+
+  it("on a gain (win), gives the below-average teammate more and the above-average teammate less", () => {
+    const [aboveAvg, belowAvg] = distributeDoublesDelta([1400, 1000], 20);
+    expect(aboveAvg).toBeLessThan(20);
+    expect(belowAvg).toBeGreaterThan(20);
+    expect(aboveAvg).toBe(19);
+    expect(belowAvg).toBe(21);
+    expect(aboveAvg + belowAvg).toBe(40); // 팀 델타*2로 합 보존
+  });
+
+  it("on a loss, makes the above-average teammate lose more and the below-average teammate lose less", () => {
+    const [aboveAvg, belowAvg] = distributeDoublesDelta([1400, 1000], -20);
+    expect(aboveAvg).toBeLessThan(belowAvg); // 더 많이 잃음(더 음수)
+    expect(aboveAvg).toBe(-21);
+    expect(belowAvg).toBe(-19);
+    expect(aboveAvg + belowAvg).toBe(-40);
+  });
+});
+
 describe("calculateDoublesElo", () => {
-  it("applies the same delta to both players on a team, based on team average rating", () => {
+  it("applies the same delta to both players on a team when they're equally rated", () => {
     const { teamA, teamB } = calculateDoublesElo(
       [
         { rating: 1200, gamesPlayed: 0 },
@@ -269,7 +297,7 @@ describe("calculateDoublesElo", () => {
 
   it("uses each team's average rating to compute the expected score", () => {
     // Team A average (1400) vs Team B average (1200): A is favored, so a win nets less than an upset would.
-    const { teamA, teamB } = calculateDoublesElo(
+    const { teamA, deltaA } = calculateDoublesElo(
       [
         { rating: 1500, gamesPlayed: 0 },
         { rating: 1300, gamesPlayed: 0 },
@@ -282,9 +310,46 @@ describe("calculateDoublesElo", () => {
       4,
       "WIN"
     );
-    const deltaA = teamA[0] - 1500;
-    const deltaB = 1300 - teamB[0];
-    expect(deltaA).toBeCloseTo(deltaB);
+    const teamAAvgDelta = ((teamA[0] - 1500) + (teamA[1] - 1300)) / 2;
+    expect(teamAAvgDelta).toBeCloseTo(deltaA); // 개인별로 갈라져도 팀 평균 이동량은 그대로
     expect(deltaA).toBeLessThan(18); // favored winner gains less than an even match would
+  });
+
+  it("differentiates individual gains within the winning team by rating (lower-rated teammate gains more)", () => {
+    const { teamA } = calculateDoublesElo(
+      [
+        { rating: 1400, gamesPlayed: 0 },
+        { rating: 1000, gamesPlayed: 0 },
+      ],
+      [
+        { rating: 1200, gamesPlayed: 0 },
+        { rating: 1200, gamesPlayed: 0 },
+      ],
+      6,
+      4,
+      "WIN"
+    );
+    const higherRatedGain = teamA[0] - 1400;
+    const lowerRatedGain = teamA[1] - 1000;
+    expect(lowerRatedGain).toBeGreaterThan(higherRatedGain);
+  });
+
+  it("differentiates individual losses within the losing team by rating (higher-rated teammate loses more)", () => {
+    const { teamB } = calculateDoublesElo(
+      [
+        { rating: 1200, gamesPlayed: 0 },
+        { rating: 1200, gamesPlayed: 0 },
+      ],
+      [
+        { rating: 1400, gamesPlayed: 0 },
+        { rating: 1000, gamesPlayed: 0 },
+      ],
+      6,
+      4,
+      "WIN"
+    );
+    const higherRatedLoss = teamB[0] - 1400;
+    const lowerRatedLoss = teamB[1] - 1000;
+    expect(higherRatedLoss).toBeLessThan(lowerRatedLoss); // 더 많이 잃음(더 음수)
   });
 });

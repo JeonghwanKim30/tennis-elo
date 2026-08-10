@@ -203,9 +203,45 @@ export interface PlayerEloInput {
   gamesPlayed: number;
 }
 
+// 팀 델타를 팀원 개인 레이팅 차이에 따라 차등 배분할 때 쓰는 보정 계수.
+const DOUBLES_INDIVIDUAL_WEIGHT_ALPHA = 0.25;
+
 /**
- * 팀 레이팅은 두 선수 레이팅의 평균으로 계산하고,
- * 팀 단위로 산출된 delta를 두 선수 모두에게 동일하게 적용한다.
+ * 복식 팀 델타(팀 평균 레이팅 기준으로 산출된 값 — 예전엔 팀원 둘에게 그대로
+ * 동일하게 적용했음)를 개인 레이팅에 따라 차등 배분한다.
+ * - 팀이 점수를 얻는 상황(teamDelta > 0, 승리 또는 유리한 무승부)이면 팀
+ *   평균보다 레이팅이 낮은 하위 랭커가 더 많이 얻는다(리스크를 더 짊어졌으므로).
+ * - 팀이 점수를 잃는 상황(teamDelta < 0, 패배 또는 불리한 무승부)이면 팀
+ *   평균보다 레이팅이 높은 상위 랭커가 더 많이 잃는다(책임이 더 크므로).
+ * 두 사람에게 배분된 값의 합은 항상 teamDelta*2로 보존된다 — 팀 전체
+ * 이동량(평균 = teamDelta)은 기존과 동일하고, 개인 간 배분만 달라진다.
+ */
+export function distributeDoublesDelta(
+  ratings: [number, number],
+  teamDelta: number,
+  alpha: number = DOUBLES_INDIVIDUAL_WEIGHT_ALPHA
+): [number, number] {
+  const [r1, r2] = ratings;
+  const avg = (r1 + r2) / 2;
+  if (teamDelta === 0 || avg === 0) return [teamDelta, teamDelta];
+
+  const isGain = teamDelta > 0;
+  // 음수 가중치(극단적인 레이팅 격차)로 배분 방향이 뒤집히지 않도록 0 이상으로 고정한다.
+  const weightOf = (r: number) => Math.max(0, 1 + alpha * ((isGain ? avg - r : r - avg) / avg));
+
+  const w1 = weightOf(r1);
+  const w2 = weightOf(r2);
+  const avgWeight = (w1 + w2) / 2;
+  if (avgWeight === 0) return [teamDelta, teamDelta];
+
+  const delta1 = Math.round((teamDelta * w1) / avgWeight);
+  const delta2 = teamDelta * 2 - delta1; // 나머지를 그대로 배정해 합을 정확히 보존한다.
+  return [delta1, delta2];
+}
+
+/**
+ * 팀 레이팅은 두 선수 레이팅의 평균으로 계산해 팀 단위 델타를 산출한 뒤,
+ * distributeDoublesDelta로 개인 레이팅에 따라 차등 배분해 각 선수에게 적용한다.
  */
 export function calculateDoublesElo(
   teamA: [PlayerEloInput, PlayerEloInput],
@@ -231,9 +267,18 @@ export function calculateDoublesElo(
     genderMultiplier,
   });
 
+  const [teamADelta1, teamADelta2] = distributeDoublesDelta(
+    [teamA[0].rating, teamA[1].rating],
+    eloChange.deltaA
+  );
+  const [teamBDelta1, teamBDelta2] = distributeDoublesDelta(
+    [teamB[0].rating, teamB[1].rating],
+    eloChange.deltaB
+  );
+
   return {
-    teamA: [teamA[0].rating + eloChange.deltaA, teamA[1].rating + eloChange.deltaA],
-    teamB: [teamB[0].rating + eloChange.deltaB, teamB[1].rating + eloChange.deltaB],
+    teamA: [teamA[0].rating + teamADelta1, teamA[1].rating + teamADelta2],
+    teamB: [teamB[0].rating + teamBDelta1, teamB[1].rating + teamBDelta2],
     ...eloChange,
   };
 }

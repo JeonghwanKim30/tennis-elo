@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { CloseIcon, TrashIcon } from "@/components/icons";
+import { useImageZoomPan } from "@/hooks/useImageZoomPan";
 
 const SWIPE_THRESHOLD_PX = 40;
 
@@ -30,17 +31,49 @@ export function PhotoLightbox({
   onDelete: (photoId: string) => void;
 }) {
   const touchStartX = useRef<number | null>(null);
+  // 훅이 돌려주는 객체를 zoomPan.xxx로 그때그때 꺼내 쓰면(멤버 접근) 이 객체
+  // 안에 ref가 섞여 있다는 이유로 린터(react-hooks/refs)가 관련 없는 다른
+  // 프로퍼티 접근까지 전부 "렌더 중 ref 접근"으로 오탐한다 — 훅 호출 시점에
+  // 곧바로 구조분해해서 일반 변수로 받으면 이 오탐을 피할 수 있다.
+  const {
+    scale,
+    translate,
+    isZoomed,
+    containerRef,
+    imgRef,
+    reset: resetZoom,
+    onWheel,
+    onMouseDown,
+    onMouseMove,
+    onMouseUp,
+    onTouchStart: onZoomTouchStart,
+    onTouchMove: onZoomTouchMove,
+    onTouchEnd: onZoomTouchEnd,
+  } = useImageZoomPan();
   const photo = photos[index];
   const total = photos.length;
+
+  // index가 어떤 경로로 바뀌든(화살표/스와이프/점 클릭은 물론, 사진 삭제로
+  // 부모가 직접 바꾸는 경우까지) 이전 사진의 확대 상태가 다음 사진에 남지 않게 한다.
+  useEffect(() => {
+    resetZoom();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index]);
 
   function goTo(i: number) {
     onIndexChange(Math.max(0, Math.min(total - 1, i)));
   }
   function handleTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0].clientX;
+    onZoomTouchStart(e);
+    // 확대돼 있을 땐 손가락 이동이 "이동(Pan)"이지 "다음 사진 넘기기"가 아니다.
+    touchStartX.current = e.touches.length === 1 && scale <= 1 ? e.touches[0].clientX : null;
+  }
+  function handleTouchMove(e: React.TouchEvent) {
+    onZoomTouchMove(e);
   }
   function handleTouchEnd(e: React.TouchEvent) {
-    if (touchStartX.current === null) return;
+    onZoomTouchEnd(e);
+    if (touchStartX.current === null || scale > 1) return;
     const delta = e.changedTouches[0].clientX - touchStartX.current;
     touchStartX.current = null;
     if (delta > SWIPE_THRESHOLD_PX) goTo(index - 1);
@@ -95,9 +128,17 @@ export function PhotoLightbox({
       </div>
 
       <div
+        ref={containerRef}
         className="relative flex flex-1 items-center justify-center overflow-hidden px-2"
+        style={{ touchAction: "none" }}
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onWheel={onWheel}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseUp}
         onClick={(e) => e.stopPropagation()}
       >
         {index > 0 && (
@@ -111,7 +152,17 @@ export function PhotoLightbox({
           </button>
         )}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={photo.src} alt="" className="max-h-full max-w-full rounded-lg object-contain" />
+        <img
+          ref={imgRef}
+          src={photo.src}
+          alt=""
+          draggable={false}
+          className="max-h-full max-w-full rounded-lg object-contain select-none"
+          style={{
+            transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+            cursor: isZoomed ? "grab" : "zoom-in",
+          }}
+        />
         {index < total - 1 && (
           <button
             type="button"
