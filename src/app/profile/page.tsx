@@ -5,35 +5,21 @@ import { type TeamPlayer } from "@/components/TeamBadges";
 import { TierBadge } from "@/components/TierBadge";
 import { TierInfoModal } from "@/components/TierInfoModal";
 import { getTier, compareTierChange } from "@/lib/tier";
-import { isKakaoLoginConfigured } from "@/lib/kakao";
-import { appBaseUrl } from "@/lib/notice";
 import { AvatarUploader } from "./AvatarUploader";
 import { BioEditor } from "./BioEditor";
-import { KakaoSection } from "./KakaoSection";
 import { PhoneEditor } from "./PhoneEditor";
 import { ProfileStats } from "./ProfileStats";
 import { TierChangeBanner } from "./TierChangeBanner";
 
 type Tab = "all" | "singles" | "doubles";
 
-function kakaoAuthorizeUrl(): string | null {
-  if (!isKakaoLoginConfigured()) return null;
-  const redirectUri = process.env.KAKAO_REDIRECT_URI ?? `${appBaseUrl()}/api/kakao/callback`;
-  const params = new URLSearchParams({
-    client_id: process.env.KAKAO_REST_API_KEY!,
-    redirect_uri: redirectUri,
-    response_type: "code",
-  });
-  return `https://kauth.kakao.com/oauth/authorize?${params.toString()}`;
-}
-
 export default async function ProfilePage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; kakao?: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const user = await requireUser();
-  const { tab: rawTab, kakao } = await searchParams;
+  const { tab: rawTab } = await searchParams;
   const tab: Tab = rawTab === "singles" || rawTab === "doubles" ? rawTab : "all";
 
   const ratings = await prisma.eloRating.findMany({ where: { userId: user.id } });
@@ -112,14 +98,6 @@ export default async function ProfilePage({
       />
 
       <BioEditor initialBio={user.bio ?? ""} />
-
-      <KakaoSection
-        connected={!!user.kakaoId}
-        nickname={user.kakaoNickname}
-        notifyOptIn={user.kakaoNotifyOptIn}
-        authorizeUrl={kakaoAuthorizeUrl()}
-        feedback={kakao}
-      />
 
       <ProfileStats
         basePath="/profile"

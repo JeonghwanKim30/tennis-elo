@@ -45,10 +45,10 @@ export default async function MatchDayPage({
   searchParams,
 }: {
   params: Promise<{ dayId: string }>;
-  searchParams: Promise<{ rsvp?: string; openMvp?: string }>;
+  searchParams: Promise<{ rsvp?: string }>;
 }) {
   const { dayId } = await params;
-  const { rsvp, openMvp } = await searchParams;
+  const { rsvp } = await searchParams;
   const user = await getCurrentUser();
 
   const day = await prisma.matchDay.findUnique({
@@ -268,7 +268,6 @@ export default async function MatchDayPage({
               totalEloGain={mvpResult.totalEloGain}
               wins={mvpResult.wins}
               losses={mvpResult.losses}
-              autoOpen={openMvp === "1"}
             />
           )}
         </div>
