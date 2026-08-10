@@ -27,3 +27,15 @@ export function TierBadge({
     </span>
   );
 }
+
+// 배치 경기(최초 5경기) 진행 중인 유저는 정식 티어 대신 이 배지를 보여준다
+// (아직 랭크가 없다는 뜻의 중립 회색 — 특정 티어 색을 쓰지 않는다).
+export function PlacementBadge({ size = "md" }: { size?: "sm" | "md" }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center rounded-full bg-muted font-bold text-muted-foreground ${SIZE_CLASSES[size]}`}
+    >
+      배치 중
+    </span>
+  );
+}

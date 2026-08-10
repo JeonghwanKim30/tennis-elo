@@ -2,9 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { avatarSrc } from "@/lib/avatar";
 import { type TeamPlayer } from "@/components/TeamBadges";
-import { TierBadge } from "@/components/TierBadge";
+import { TierBadge, PlacementBadge } from "@/components/TierBadge";
 import { TierInfoModal } from "@/components/TierInfoModal";
-import { getTier, compareTierChange } from "@/lib/tier";
+import { PlacementInfoModal } from "@/components/PlacementInfoModal";
+import { getTier, compareTierChange, isPlacement } from "@/lib/tier";
 import { AvatarUploader } from "./AvatarUploader";
 import { BioEditor } from "./BioEditor";
 import { PhoneEditor } from "./PhoneEditor";
@@ -29,14 +30,25 @@ export default async function ProfilePage({
   // (리그 오브 레전드의 "피크 랭크"처럼, 두 종목 중 더 잘하는 쪽을 대표로 보여준다).
   // 종목별 세부 티어는 ProfileStats의 단식/복식 ELO 카드에 각각 따로 표시된다.
   const tierRating = Math.max(singles?.rating ?? 1200, doubles?.rating ?? 1200);
+  // 대표 티어가 어느 종목 기준인지에 따라 그 종목의 완료 경기 수로 배치 여부를 판단한다
+  // (0전 0패 신규 유저가 정식 티어처럼 보이는 문제를 막는다).
+  const singlesTotal = (singles?.wins ?? 0) + (singles?.losses ?? 0) + (singles?.draws ?? 0);
+  const doublesTotal = (doubles?.wins ?? 0) + (doubles?.losses ?? 0) + (doubles?.draws ?? 0);
+  const peakTotal = (singles?.rating ?? 1200) >= (doubles?.rating ?? 1200) ? singlesTotal : doublesTotal;
+  const headerPlacement = isPlacement(peakTotal);
 
   // 마지막으로 확인한 티어와 지금 티어를 비교해 승급/강등 여부를 판단한다.
   // 경기 승패 입력(enterMatchScoreAction) -> ELO 반영은 이미 끝난 상태이고,
   // "그 유저가 내 프로필에 들어갔을 때" 알려주면 되므로 여기서만 계산하면 된다.
   const currentSinglesTier = getTier(singles?.rating ?? 1200);
   const currentDoublesTier = getTier(doubles?.rating ?? 1200);
-  const singlesTierChange = compareTierChange(user.lastSeenTierSingles, currentSinglesTier);
-  const doublesTierChange = compareTierChange(user.lastSeenTierDoubles, currentDoublesTier);
+  // 아직 배치 중인 종목은 정식 티어가 없는 상태이므로 승급/강등 배너를 띄우지 않는다.
+  const singlesTierChange = isPlacement(singlesTotal)
+    ? null
+    : compareTierChange(user.lastSeenTierSingles, currentSinglesTier);
+  const doublesTierChange = isPlacement(doublesTotal)
+    ? null
+    : compareTierChange(user.lastSeenTierDoubles, currentDoublesTier);
 
   const typeFilter = tab === "singles" ? "SINGLES" : tab === "doubles" ? "DOUBLES" : undefined;
 
@@ -81,8 +93,12 @@ export default async function ProfilePage({
         <div className="min-w-0 pt-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="truncate text-2xl font-bold">{user.name}</h1>
-            <TierBadge rating={tierRating} />
-            <TierInfoModal currentTierKey={getTier(tierRating).key} />
+            {headerPlacement ? <PlacementBadge /> : <TierBadge rating={tierRating} />}
+            {headerPlacement ? (
+              <PlacementInfoModal completed={peakTotal} />
+            ) : (
+              <TierInfoModal currentTierKey={getTier(tierRating).key} />
+            )}
           </div>
           <div className="mt-1 truncate text-sm text-muted-foreground">
             <PhoneEditor initialPhone={user.phone} />

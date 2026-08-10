@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { avatarSrc } from "@/lib/avatar";
 import { Avatar } from "@/components/Avatar";
-import { TierBadge } from "@/components/TierBadge";
+import { TierBadge, PlacementBadge } from "@/components/TierBadge";
 import { TierInfoModal } from "@/components/TierInfoModal";
-import { getTier } from "@/lib/tier";
+import { PlacementInfoModal } from "@/components/PlacementInfoModal";
+import { getTier, isPlacement } from "@/lib/tier";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { ProfileStats } from "../ProfileStats";
 
@@ -43,6 +44,10 @@ export default async function PublicProfilePage({
   // 이름 옆 대표 티어는 단식/복식 중 더 높은 쪽 ELO 기준(종목별 세부 티어는
   // ProfileStats의 ELO 카드에 따로 표시된다). /profile의 본인 프로필과 동일한 규칙.
   const tierRating = Math.max(singles?.rating ?? 1200, doubles?.rating ?? 1200);
+  const singlesTotal = (singles?.wins ?? 0) + (singles?.losses ?? 0) + (singles?.draws ?? 0);
+  const doublesTotal = (doubles?.wins ?? 0) + (doubles?.losses ?? 0) + (doubles?.draws ?? 0);
+  const peakTotal = (singles?.rating ?? 1200) >= (doubles?.rating ?? 1200) ? singlesTotal : doublesTotal;
+  const headerPlacement = isPlacement(peakTotal);
 
   const typeFilter = tab === "singles" ? "SINGLES" : tab === "doubles" ? "DOUBLES" : undefined;
 
@@ -85,8 +90,12 @@ export default async function PublicProfilePage({
         <div className="min-w-0 pt-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="truncate text-2xl font-bold">{profileUser.name}</h1>
-            <TierBadge rating={tierRating} />
-            <TierInfoModal currentTierKey={getTier(tierRating).key} />
+            {headerPlacement ? <PlacementBadge /> : <TierBadge rating={tierRating} />}
+            {headerPlacement ? (
+              <PlacementInfoModal completed={peakTotal} />
+            ) : (
+              <TierInfoModal currentTierKey={getTier(tierRating).key} />
+            )}
           </div>
         </div>
       </div>

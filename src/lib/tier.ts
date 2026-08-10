@@ -2,6 +2,8 @@
 // K-Factor + MOV 적용, lib/elo.ts) 점수 구간에 맞춰 8단계 티어를 매긴다.
 // 리더보드/프로필/경기 상세 등 앱 전역에서 이 하나의 유틸리티를 공유한다.
 
+import { PROVISIONAL_GAMES_THRESHOLD } from "./elo";
+
 export type TierKey =
   | "IRON"
   | "BRONZE"
@@ -100,6 +102,35 @@ export function getAllTierRanges(): TierRange[] {
     const nextDef = i < TIER_ORDER.length - 1 ? TIER_DEFS.find((d) => d.key === TIER_ORDER[i + 1])! : null;
     return { tier: getTierByKey(key), min: def.min, max: nextDef ? nextDef.min - 1 : null };
   });
+}
+
+// 완료 경기 수(승+패+무)가 배치 기준(5경기) 미만이면 아직 "배치 중" — 정식
+// 랭킹/티어를 부여하지 않고 리더보드/프로필에 별도 표시(PlacementBadge)한다.
+export function isPlacement(totalMatches: number): boolean {
+  return totalMatches < PROVISIONAL_GAMES_THRESHOLD;
+}
+
+export interface RankableRow {
+  rating: number;
+  wins: number;
+  losses: number;
+  draws: number;
+}
+
+/**
+ * 리더보드 정렬 비교 함수: 배치 완료자(총 경기 ≥5)를 항상 먼저(레이팅
+ * 내림차순), 배치 진행 중인 유저는 그 뒤에 경기 수 많은 순 → 레이팅
+ * 내림차순으로 배치한다. 0전 0패(1200점) 신규 유저가 실제로 경기를 뛰어
+ * 점수가 내려간 유저보다 상위에 노출되는 문제를 막는다.
+ */
+export function compareForRanking(a: RankableRow, b: RankableRow): number {
+  const totalA = a.wins + a.losses + a.draws;
+  const totalB = b.wins + b.losses + b.draws;
+  const placementA = isPlacement(totalA);
+  const placementB = isPlacement(totalB);
+  if (placementA !== placementB) return placementA ? 1 : -1;
+  if (placementA && totalA !== totalB) return totalB - totalA;
+  return b.rating - a.rating;
 }
 
 export interface TierChange {

@@ -2,8 +2,8 @@ import Link from "next/link";
 import { RESULT_LABEL } from "@/lib/matchDisplay";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { MatchupRow } from "@/components/MatchupRow";
-import { TierBadge } from "@/components/TierBadge";
-import { getTier } from "@/lib/tier";
+import { TierBadge, PlacementBadge } from "@/components/TierBadge";
+import { getTier, isPlacement } from "@/lib/tier";
 import type { Match, MatchDay } from "@/generated/prisma/client";
 
 type Tab = "all" | "singles" | "doubles";
@@ -39,6 +39,9 @@ export function ProfileStats({
   const totalDraws = (singles?.draws ?? 0) + (doubles?.draws ?? 0);
   const totalGames = totalWins + totalLosses + totalDraws;
 
+  const singlesTotal = (singles?.wins ?? 0) + (singles?.losses ?? 0) + (singles?.draws ?? 0);
+  const doublesTotal = (doubles?.wins ?? 0) + (doubles?.losses ?? 0) + (doubles?.draws ?? 0);
+
   return (
     <>
       <div className="grid grid-cols-2 gap-4">
@@ -47,14 +50,22 @@ export function ProfileStats({
           <p className="font-display text-4xl font-bold text-primary">
             {Math.round(singles?.rating ?? 1200)}
           </p>
-          <TierBadge tier={getTier(singles?.rating ?? 1200)} />
+          {isPlacement(singlesTotal) ? (
+            <PlacementBadge />
+          ) : (
+            <TierBadge tier={getTier(singles?.rating ?? 1200)} />
+          )}
         </div>
         <div className="surface-card space-y-1.5 p-4 text-center">
           <p className="text-sm text-muted-foreground">복식 ELO</p>
           <p className="font-display text-4xl font-bold text-primary">
             {Math.round(doubles?.rating ?? 1200)}
           </p>
-          <TierBadge tier={getTier(doubles?.rating ?? 1200)} />
+          {isPlacement(doublesTotal) ? (
+            <PlacementBadge />
+          ) : (
+            <TierBadge tier={getTier(doubles?.rating ?? 1200)} />
+          )}
         </div>
       </div>
 

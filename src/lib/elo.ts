@@ -1,7 +1,10 @@
 export const INITIAL_RATING = 1200;
 
 // 경기 수가 이 값 이하이면 레이팅이 아직 불안정하다고 보고 K를 높게(더 유동적으로) 잡는다.
-const PROVISIONAL_GAMES_THRESHOLD = 5;
+// 리더보드/프로필의 "배치 중(Placement)" 표시도 이 값을 공유한다(lib/tier.ts의
+// isPlacement 참고) — 배치 완료 기준(정식 랭킹 부여)은 K-Factor가 안정화되는
+// 시점과 같은 기준(완료 경기 5회)을 쓰는 게 자연스럽다.
+export const PROVISIONAL_GAMES_THRESHOLD = 5;
 const K_FACTOR_PROVISIONAL = 32;
 const K_FACTOR_ESTABLISHED = 24;
 

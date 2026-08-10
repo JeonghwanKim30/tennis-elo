@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Avatar } from "@/components/Avatar";
-import { TierBadge } from "@/components/TierBadge";
+import { TierBadge, PlacementBadge } from "@/components/TierBadge";
 import { avatarSrc, type AvatarUser } from "@/lib/avatar";
-import { getTier } from "@/lib/tier";
+import { getTier, isPlacement, compareForRanking } from "@/lib/tier";
 
 type GenderFilter = "ALL" | "FEMALE" | "MALE";
 const GENDER_TABS: { key: GenderFilter; label: string }[] = [
@@ -42,9 +42,12 @@ export default async function LeaderboardPage({
 
   const rows = await prisma.eloRating.findMany({
     where: { type: typeFilter, ...activeFilter },
-    orderBy: { rating: "desc" },
     include: { user: { select: userSelect } },
   });
+  // 배치 완료(경기 5회 이상)자를 레이팅 내림차순으로 먼저, 배치 진행 중인
+  // 유저는 경기 수 많은 순으로 그 뒤에 배치한다 — 0전 0패 신규 유저가 실제로
+  // 경기를 뛰어 점수가 내려간 유저보다 위로 올라가는 문제를 막는다.
+  rows.sort(compareForRanking);
 
   const filterRows = <T extends { user: { gender: string } }>(rowsToFilter: T[]) =>
     genderFilter === "ALL" ? rowsToFilter : rowsToFilter.filter((r) => r.user.gender === genderFilter);
@@ -124,31 +127,35 @@ function RankingTable({
         // 표 대신 줄바꿈 가능한 행으로 구성해, 좁은 화면에서 열이 잘리거나
         // 가로 스크롤이 필요해지는 대신 내용이 자연스럽게 다음 줄로 넘어가게 한다.
         <div className="surface-card min-h-[160px] divide-y divide-border">
-          {rows.map((r, i) => (
-            <div key={r.userId} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
-              <span
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm leading-none font-bold ${
-                  i < 3 ? RANK_BADGE[i] : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {i + 1}
-              </span>
-              <Link
-                href={`/profile/${r.userId}`}
-                className="btn-press flex min-w-0 flex-1 items-center gap-2"
-              >
-                <Avatar src={avatarSrc(r.user)} size="sm" />
-                <span className="min-w-0 truncate font-medium">{r.user.name}</span>
-                <TierBadge tier={getTier(r.rating)} size="sm" />
-              </Link>
-              <span className="font-display shrink-0 text-lg leading-none font-semibold text-primary">
-                {Math.round(r.rating)}
-              </span>
-              <span className="w-full shrink-0 pl-11 text-sm leading-relaxed text-muted-foreground sm:w-auto sm:pl-0">
-                {r.wins}승 {r.losses}패 {r.draws}무
-              </span>
-            </div>
-          ))}
+          {rows.map((r, i) => {
+            const totalMatches = r.wins + r.losses + r.draws;
+            const placement = isPlacement(totalMatches);
+            return (
+              <div key={r.userId} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm leading-none font-bold ${
+                    !placement && i < 3 ? RANK_BADGE[i] : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {placement ? "-" : i + 1}
+                </span>
+                <Link
+                  href={`/profile/${r.userId}`}
+                  className="btn-press flex min-w-0 flex-1 items-center gap-2"
+                >
+                  <Avatar src={avatarSrc(r.user)} size="sm" />
+                  <span className="min-w-0 truncate font-medium">{r.user.name}</span>
+                  {placement ? <PlacementBadge size="sm" /> : <TierBadge tier={getTier(r.rating)} size="sm" />}
+                </Link>
+                <span className="font-display shrink-0 text-lg leading-none font-semibold text-primary">
+                  {Math.round(r.rating)}
+                </span>
+                <span className="w-full shrink-0 pl-11 text-sm leading-relaxed text-muted-foreground sm:w-auto sm:pl-0">
+                  {r.wins}승 {r.losses}패 {r.draws}무
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
     </section>
