@@ -14,7 +14,7 @@ export default async function AdminPage({
 }) {
   const admin = await requireAdmin();
   const { tab: rawTab } = await searchParams;
-  const tab: AdminTab = VALID_TABS.includes(rawTab as AdminTab) ? (rawTab as AdminTab) : "register";
+  const tab: AdminTab = VALID_TABS.includes(rawTab as AdminTab) ? (rawTab as AdminTab) : "score";
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 px-4 py-12">

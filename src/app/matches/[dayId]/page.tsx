@@ -16,6 +16,7 @@ import { AttendanceCarousel } from "./AttendanceCarousel";
 import { MvpModal } from "./MvpModal";
 import { MatchDayPhotoGallery } from "./MatchDayPhotoGallery";
 import { setParticipationStatusAction, submitMatchScoreAction } from "./actions";
+import { deleteMatchAction } from "@/app/admin/actions";
 
 const RSVP_LABEL: Record<ParticipationStatus, string> = {
   ATTENDING: "참여",
@@ -262,6 +263,7 @@ export default async function MatchDayPage({
                 <li key={m.id}>
                   <MatchScoreCard
                     action={submitMatchScoreAction.bind(null, m.id)}
+                    deleteAction={user?.role === "ADMIN" ? deleteMatchAction.bind(null, m.id) : undefined}
                     type={m.type}
                     teamA1={a1}
                     teamA2={a2}
