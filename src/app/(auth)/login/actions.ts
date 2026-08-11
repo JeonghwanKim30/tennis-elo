@@ -26,7 +26,12 @@ export async function loginAction(
   const { name, pin } = parsed.data;
 
   // 이름은 중복될 수 있으므로 동명이인 후보 중 PIN이 일치하는 계정을 찾는다.
-  const candidates = await prisma.user.findMany({ where: { name } });
+  // 로그인마다 실행되는 쿼리라 인증에 필요한 필드만 선택해 profileImage(Bytes)
+  // 같은 무거운 컬럼을 불필요하게 끌고 오지 않게 한다.
+  const candidates = await prisma.user.findMany({
+    where: { name },
+    select: { id: true, pinHash: true, status: true, role: true },
+  });
 
   let matchedUser = null;
   for (const candidate of candidates) {

@@ -10,6 +10,15 @@ export async function UserManagementSection({ currentAdminId }: { currentAdminId
   const users = await prisma.user.findMany({
     where: { status: "ACTIVE" },
     orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      role: true,
+      gender: true,
+      profileImage: true,
+      profileImageType: true,
+    },
   });
 
   const plainUsers = users.map((u) => ({

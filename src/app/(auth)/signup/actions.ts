@@ -32,6 +32,7 @@ export async function signupAction(
   // 대비해 조회 자체도 ACTIVE/PENDING 상태만 "이미 등록됨"으로 취급한다.
   const existing = await prisma.user.findFirst({
     where: { phone, status: { in: ["ACTIVE", "PENDING"] } },
+    select: { id: true },
   });
   if (existing) {
     return { error: "이미 등록된 휴대폰 번호입니다." };

@@ -33,7 +33,20 @@ export default async function PublicProfilePage({
   const tab: Tab = rawTab === "singles" || rawTab === "doubles" ? rawTab : "all";
 
   // 탈퇴/추방/미승인 회원은 공개 프로필 대상이 아니다(다른 공개 목록들과 동일한 기준).
-  const profileUser = await prisma.user.findUnique({ where: { id: userId } });
+  // 공개 프로필에 실제로 쓰는 필드만 선택 — 전화번호(비공개 정책)나 pinHash
+  // 같은 민감/불필요 컬럼을 서버 메모리로도 끌어오지 않는다.
+  const profileUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      bio: true,
+      status: true,
+      gender: true,
+      profileImage: true,
+      profileImageType: true,
+    },
+  });
   if (!profileUser || profileUser.status !== "ACTIVE") {
     notFound();
   }

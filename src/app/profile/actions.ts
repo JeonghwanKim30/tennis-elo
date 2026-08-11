@@ -87,6 +87,7 @@ export async function updatePhoneAction(
     // 실제로는 충돌하지 않지만, 조회 조건에서도 한 번 더 방어한다.
     const existing = await prisma.user.findFirst({
       where: { phone, status: { in: ["ACTIVE", "PENDING"] } },
+      select: { id: true },
     });
     if (existing) {
       return { error: "이미 등록된 휴대폰 번호입니다." };

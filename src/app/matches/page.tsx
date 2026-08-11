@@ -47,8 +47,19 @@ export default async function MatchesPage({
   const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : PAGE_SIZE;
 
   const user = await getCurrentUser();
+  const today = new Date(new Date().toISOString().slice(0, 10));
 
+  // scope(탭)는 그대로 결과에 반영되는 조건이라 DB where 절로 옮겨도 최종
+  // 목록은 동일하다 — 다만 지난/다가오는 경기 중 안 쓰는 절반을 애초에
+  // DB에서부터 안 끌어와서(참가자·사진 include까지) 매번 전체 이력을 다
+  // 가져오던 것보다 훨씬 가볍다.
   const days = await prisma.matchDay.findMany({
+    where:
+      scope === "upcoming"
+        ? { date: { gte: today } }
+        : scope === "past"
+          ? { date: { lt: today } }
+          : undefined,
     orderBy: { date: "desc" },
     include: {
       participants: {
@@ -63,22 +74,16 @@ export default async function MatchesPage({
     },
   });
 
-  const today = new Date(new Date().toISOString().slice(0, 10));
   const daysWithDiff = days.map((d) => ({
     ...d,
     diffDays: Math.round((d.date.getTime() - today.getTime()) / DAY_MS),
   }));
 
-  // 1차: "내가 참여하는 경기만"(mine) 필터 -> 2차: 탭(scope) 필터. 두 필터는
-  // 서로 독립적인 조건이고 그 결과를 교집합(AND)으로 합칠 뿐, 어느 쪽도 다른
-  // 쪽의 값을 바꾸지 않는다 — 예: "다가오는 경기" 탭 + mine=1이면 "다가오는
-  // 경기 중 내가 참여하는 경기"만 남고, 탭 선택은 그대로 유지된다.
-  let filteredDays = mineOnly && user
+  // "내가 참여하는 경기만"(mine) 필터 — scope와 서로 독립적인 조건이라 이미
+  // DB에서 걸러진 scope 결과 위에 교집합(AND)으로 한 번 더 좁히기만 하면 된다.
+  const filteredDays = mineOnly && user
     ? daysWithDiff.filter((d) => d.participants.some((p) => p.userId === user.id && p.status === "ATTENDING"))
     : daysWithDiff;
-
-  if (scope === "upcoming") filteredDays = filteredDays.filter((d) => d.diffDays >= 0);
-  if (scope === "past") filteredDays = filteredDays.filter((d) => d.diffDays < 0);
 
   filteredDays.sort((a, b) => Math.abs(a.diffDays) - Math.abs(b.diffDays) || a.diffDays - b.diffDays);
 
