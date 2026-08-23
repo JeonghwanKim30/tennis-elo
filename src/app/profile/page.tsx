@@ -19,9 +19,27 @@ export default async function ProfilePage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const user = await requireUser();
+  const authUser = await requireUser();
   const { tab: rawTab } = await searchParams;
   const tab: Tab = rawTab === "singles" || rawTab === "doubles" ? rawTab : "all";
+
+  // getCurrentUser()(=requireUser)는 라우팅마다 NavBar가 부르는 가벼운
+  // 인증용 select라 name/bio/profileImage 같은 프로필 전용 필드가 없다 —
+  // 이 페이지에서만 필요한 전체 프로필 데이터를 별도로 한 번 더 조회한다.
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: authUser.id },
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      bio: true,
+      gender: true,
+      profileImage: true,
+      profileImageType: true,
+      lastSeenTierSingles: true,
+      lastSeenTierDoubles: true,
+    },
+  });
 
   const ratings = await prisma.eloRating.findMany({ where: { userId: user.id } });
   const singles = ratings.find((r) => r.type === "SINGLES");

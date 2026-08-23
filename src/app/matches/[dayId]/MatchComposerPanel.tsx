@@ -1,8 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import type { TeamPlayer } from "@/components/TeamBadges";
-import { MatchComposer } from "./MatchComposer";
+
+// 드래그 앤 드롭 팀 편성 로직이 있는 무거운 컴포넌트다. "+"를 눌러 패널을
+// 열기 전까지는 대부분의 방문자가 쓰지 않으므로, 이 페이지의 초기 번들에서
+// 빼서 실제로 열 때만 내려받게 한다.
+const MatchComposer = dynamic(() => import("./MatchComposer").then((m) => m.MatchComposer), {
+  ssr: false,
+  loading: () => <p className="text-sm text-muted-foreground">불러오는 중...</p>,
+});
 
 export function MatchComposerPanel({
   dayId,

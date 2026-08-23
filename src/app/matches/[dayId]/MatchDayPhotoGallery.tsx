@@ -2,9 +2,17 @@
 
 import { useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
 import { uploadMatchDayPhotoAction, deleteMatchDayPhotoAction } from "./actions";
-import { PhotoLightbox, type LightboxPhoto } from "./PhotoLightbox";
+import { type LightboxPhoto } from "./PhotoLightbox";
 import { MAX_PHOTOS_PER_DAY } from "./photoConfig";
+
+// 핀치줌/팬 제스처 로직이 있는 무거운 컴포넌트라, 썸네일을 실제로 클릭하기
+// 전까지는 이 페이지의 초기 번들에 포함시키지 않는다(포털로 body에 그리는
+// 모달이라 SSR로 미리 그릴 이유도 없다).
+const PhotoLightbox = dynamic(() => import("./PhotoLightbox").then((m) => m.PhotoLightbox), {
+  ssr: false,
+});
 
 const MAX_DIMENSION = 1600;
 
