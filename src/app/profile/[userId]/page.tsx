@@ -32,26 +32,55 @@ export default async function PublicProfilePage({
   const { tab: rawTab } = await searchParams;
   const tab: Tab = rawTab === "singles" || rawTab === "doubles" ? rawTab : "all";
 
-  // 탈퇴/추방/미승인 회원은 공개 프로필 대상이 아니다(다른 공개 목록들과 동일한 기준).
-  // 공개 프로필에 실제로 쓰는 필드만 선택 — 전화번호(비공개 정책)나 pinHash
-  // 같은 민감/불필요 컬럼을 서버 메모리로도 끌어오지 않는다.
-  const profileUser = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      name: true,
-      bio: true,
-      status: true,
-      gender: true,
-      profileImage: true,
-      profileImageType: true,
-    },
-  });
+  const typeFilter = tab === "singles" ? "SINGLES" : tab === "doubles" ? "DOUBLES" : undefined;
+
+  // 아래 4개 쿼리는 서로 결과를 참조하지 않고 전부 userId(또는 아무 조건
+  // 없음)만 있으면 되므로 병렬로 보낸다 — 순서대로 기다리면 원격 DB 왕복이
+  // 4번 쌓여 그대로 지연으로 이어진다. allUsers를 매치 등장 선수로 필터링
+  // 하지 않고 통째로 가져오는 이유는 ScoreSection/profile(본인)과 동일하다
+  // (매치 조회 "다음"에야 그 결과로 유저를 또 조회하는 두 번째 왕복 제거).
+  const [profileUser, ratings, matches, allUsers] = await Promise.all([
+    // 탈퇴/추방/미승인 회원은 공개 프로필 대상이 아니다(다른 공개 목록들과 동일한 기준).
+    // 공개 프로필에 실제로 쓰는 필드만 선택 — 전화번호(비공개 정책)나 pinHash
+    // 같은 민감/불필요 컬럼을 서버 메모리로도 끌어오지 않는다.
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        bio: true,
+        status: true,
+        gender: true,
+        profileImage: true,
+        profileImageType: true,
+      },
+    }),
+    prisma.eloRating.findMany({ where: { userId } }),
+    prisma.match.findMany({
+      where: {
+        status: "APPROVED",
+        ...(typeFilter ? { type: typeFilter } : {}),
+        OR: [
+          { teamAPlayer1: userId },
+          { teamAPlayer2: userId },
+          { teamBPlayer1: userId },
+          { teamBPlayer2: userId },
+        ],
+      },
+      include: { matchDay: true, eloHistory: { select: { userId: true, delta: true } } },
+      orderBy: { approvalSeq: "desc" },
+      // 경기 이력이 쌓일수록 매번 전체를 다 가져오면 페이지가 계속 느려지므로
+      // 최근 30건으로 상한을 둔다(관리자 "완료된 경기" 목록과 동일한 기준).
+      take: 30,
+    }),
+    prisma.user.findMany({
+      select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
+    }),
+  ]);
   if (!profileUser || profileUser.status !== "ACTIVE") {
     notFound();
   }
 
-  const ratings = await prisma.eloRating.findMany({ where: { userId } });
   const singles = ratings.find((r) => r.type === "SINGLES");
   const doubles = ratings.find((r) => r.type === "DOUBLES");
   // 이름 옆 대표 티어는 단식/복식 중 더 높은 쪽 ELO 기준(종목별 세부 티어는
@@ -62,38 +91,8 @@ export default async function PublicProfilePage({
   const peakTotal = (singles?.rating ?? 1200) >= (doubles?.rating ?? 1200) ? singlesTotal : doublesTotal;
   const headerPlacement = isPlacement(peakTotal);
 
-  const typeFilter = tab === "singles" ? "SINGLES" : tab === "doubles" ? "DOUBLES" : undefined;
-
-  const matches = await prisma.match.findMany({
-    where: {
-      status: "APPROVED",
-      ...(typeFilter ? { type: typeFilter } : {}),
-      OR: [
-        { teamAPlayer1: userId },
-        { teamAPlayer2: userId },
-        { teamBPlayer1: userId },
-        { teamBPlayer2: userId },
-      ],
-    },
-    include: { matchDay: true, eloHistory: { select: { userId: true, delta: true } } },
-    orderBy: { approvalSeq: "desc" },
-  });
-
-  const playerIds = Array.from(
-    new Set(
-      matches.flatMap((m) =>
-        [m.teamAPlayer1, m.teamAPlayer2, m.teamBPlayer1, m.teamBPlayer2].filter(
-          (id): id is string => !!id
-        )
-      )
-    )
-  );
-  const players = await prisma.user.findMany({
-    where: { id: { in: playerIds } },
-    select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
-  });
   const playerById = new Map<string, TeamPlayer>(
-    players.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
+    allUsers.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
   );
 
   return (

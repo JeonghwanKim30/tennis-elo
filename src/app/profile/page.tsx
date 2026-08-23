@@ -23,25 +23,56 @@ export default async function ProfilePage({
   const { tab: rawTab } = await searchParams;
   const tab: Tab = rawTab === "singles" || rawTab === "doubles" ? rawTab : "all";
 
-  // getCurrentUser()(=requireUser)는 라우팅마다 NavBar가 부르는 가벼운
-  // 인증용 select라 name/bio/profileImage 같은 프로필 전용 필드가 없다 —
-  // 이 페이지에서만 필요한 전체 프로필 데이터를 별도로 한 번 더 조회한다.
-  const user = await prisma.user.findUniqueOrThrow({
-    where: { id: authUser.id },
-    select: {
-      id: true,
-      name: true,
-      phone: true,
-      bio: true,
-      gender: true,
-      profileImage: true,
-      profileImageType: true,
-      lastSeenTierSingles: true,
-      lastSeenTierDoubles: true,
-    },
-  });
+  const typeFilter = tab === "singles" ? "SINGLES" : tab === "doubles" ? "DOUBLES" : undefined;
 
-  const ratings = await prisma.eloRating.findMany({ where: { userId: user.id } });
+  // getCurrentUser()(=requireUser)는 라우팅마다 NavBar가 부르는 가벼운 인증용
+  // select라 name/bio/profileImage 같은 프로필 전용 필드가 없어 이 페이지에서
+  // 따로 조회해야 하는데, 아래 4개 쿼리는 서로 결과값을 참조하지 않고 전부
+  // authUser.id(또는 아무 조건 없음)만 있으면 되므로 굳이 순서대로 기다릴
+  // 이유가 없다 — Promise.all로 한 번에 보내 원격 DB 왕복 횟수를 4번(순차)에서
+  // 1번(병렬 배치)으로 줄인다. allUsers를 매치에 등장한 선수 ID로 필터링하지
+  // 않고 통째로 가져오는 것도 같은 이유(매치 조회 결과가 나온 "다음에야" 그
+  // 선수 ID로 유저를 또 조회하는 두 번째 왕복을 없애기 위해서)다 — 동호회
+  // 규모의 유저 수는 전부 가져와도 가볍고, 추방/탈퇴 유저가 과거 경기에
+  // 등장해도 빠짐없이 이름/아바타를 표시할 수 있다는 장점도 있다.
+  const [user, ratings, matches, allUsers] = await Promise.all([
+    prisma.user.findUniqueOrThrow({
+      where: { id: authUser.id },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        bio: true,
+        gender: true,
+        profileImage: true,
+        profileImageType: true,
+        lastSeenTierSingles: true,
+        lastSeenTierDoubles: true,
+      },
+    }),
+    prisma.eloRating.findMany({ where: { userId: authUser.id } }),
+    prisma.match.findMany({
+      where: {
+        status: "APPROVED",
+        ...(typeFilter ? { type: typeFilter } : {}),
+        OR: [
+          { teamAPlayer1: authUser.id },
+          { teamAPlayer2: authUser.id },
+          { teamBPlayer1: authUser.id },
+          { teamBPlayer2: authUser.id },
+        ],
+      },
+      include: { matchDay: true, eloHistory: { select: { userId: true, delta: true } } },
+      orderBy: { approvalSeq: "desc" },
+      // 경기 이력이 쌓일수록 매번 전체를 다 가져오면 페이지가 계속 느려지므로
+      // 최근 30건으로 상한을 둔다(관리자 "완료된 경기" 목록과 동일한 기준).
+      take: 30,
+    }),
+    prisma.user.findMany({
+      select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
+    }),
+  ]);
+
   const singles = ratings.find((r) => r.type === "SINGLES");
   const doubles = ratings.find((r) => r.type === "DOUBLES");
   // 이름 옆 대표 티어는 단식/복식 중 더 높은 쪽 ELO를 기준으로 매긴다
@@ -68,38 +99,8 @@ export default async function ProfilePage({
     ? null
     : compareTierChange(user.lastSeenTierDoubles, currentDoublesTier);
 
-  const typeFilter = tab === "singles" ? "SINGLES" : tab === "doubles" ? "DOUBLES" : undefined;
-
-  const matches = await prisma.match.findMany({
-    where: {
-      status: "APPROVED",
-      ...(typeFilter ? { type: typeFilter } : {}),
-      OR: [
-        { teamAPlayer1: user.id },
-        { teamAPlayer2: user.id },
-        { teamBPlayer1: user.id },
-        { teamBPlayer2: user.id },
-      ],
-    },
-    include: { matchDay: true, eloHistory: { select: { userId: true, delta: true } } },
-    orderBy: { approvalSeq: "desc" },
-  });
-
-  const playerIds = Array.from(
-    new Set(
-      matches.flatMap((m) =>
-        [m.teamAPlayer1, m.teamAPlayer2, m.teamBPlayer1, m.teamBPlayer2].filter(
-          (id): id is string => !!id
-        )
-      )
-    )
-  );
-  const players = await prisma.user.findMany({
-    where: { id: { in: playerIds } },
-    select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
-  });
   const playerById = new Map<string, TeamPlayer>(
-    players.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
+    allUsers.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
   );
 
   return (

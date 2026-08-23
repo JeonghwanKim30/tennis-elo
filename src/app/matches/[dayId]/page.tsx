@@ -48,28 +48,37 @@ export default async function MatchDayPage({
   const { rsvp } = await searchParams;
   const user = await getCurrentUser();
 
-  const day = await prisma.matchDay.findUnique({
-    where: { id: dayId },
-    include: {
-      matches: {
-        orderBy: { submittedAt: "asc" },
-        include: { eloHistory: { select: { userId: true, delta: true } } },
+  // 4개 쿼리 모두 서로 결과를 참조하지 않는다(day는 dayId만, 나머지는
+  // 조건이 아예 없거나 dayId만 있으면 된다) — 순서대로 기다리면 원격 DB
+  // 왕복이 그대로 쌓이므로 Promise.all로 한 번에 보낸다. eloRatings를
+  // "이 날짜에 등장하는 회원 ID"로 필터링하지 않고 전체를 가져오는 것도
+  // 같은 이유(그 ID 목록은 activeUsers 조회 결과가 나와야 알 수 있어서,
+  // 필터링하려면 세 번째 왕복이 필요해진다)다.
+  const [day, activeUsers, dayParticipants, eloRatings] = await Promise.all([
+    prisma.matchDay.findUnique({
+      where: { id: dayId },
+      include: {
+        matches: {
+          orderBy: { submittedAt: "asc" },
+          include: { eloHistory: { select: { userId: true, delta: true } } },
+        },
+        photos: { orderBy: { createdAt: "asc" } },
       },
-      photos: { orderBy: { createdAt: "asc" } },
-    },
-  });
-  if (!day) notFound();
-
-  // 회원 전체(Users)를 기준으로 하고, 그날의 응답 기록(Attendants = MatchDayParticipant)을
-  // LEFT JOIN 하듯 매핑한다 — 응답 기록이 없으면 "미응답"으로 취급.
-  const [activeUsers, dayParticipants] = await Promise.all([
+    }),
+    // 회원 전체(Users)를 기준으로 하고, 그날의 응답 기록(Attendants = MatchDayParticipant)을
+    // LEFT JOIN 하듯 매핑한다 — 응답 기록이 없으면 "미응답"으로 취급.
     prisma.user.findMany({
       where: { status: "ACTIVE" },
       select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
       orderBy: { name: "asc" },
     }),
     prisma.matchDayParticipant.findMany({ where: { matchDayId: dayId } }),
+    // 경기 카드에 선수별(단식/복식 종목에 맞는) 현재 티어를 색 링으로 보여주기 위해
+    // 전체 EloRating을 미리 조회해둔다.
+    prisma.eloRating.findMany(),
   ]);
+  if (!day) notFound();
+
   const statusByUserId = new Map(dayParticipants.map((p) => [p.userId, p.status]));
 
   // profileImage(Bytes)는 클라이언트 컴포넌트(MatchComposerPanel)로 넘어갈 수 없으므로
@@ -83,11 +92,6 @@ export default async function MatchDayPage({
   const playerById = new Map(members.map((m) => [m.id, m]));
   const attendingMembers: TeamPlayer[] = members.filter((m) => m.status === "ATTENDING");
 
-  // 경기 카드에 선수별(단식/복식 종목에 맞는) 현재 티어를 색 링으로 보여주기 위해
-  // 이 날짜에 등장하는 모든 회원의 EloRating을 미리 조회해둔다.
-  const eloRatings = await prisma.eloRating.findMany({
-    where: { userId: { in: members.map((m) => m.id) } },
-  });
   const ratingByUserType = new Map(eloRatings.map((r) => [`${r.userId}_${r.type}`, r.rating]));
   function tierFor(userId: string, type: MatchType): Tier {
     return getTier(ratingByUserType.get(`${userId}_${type}`) ?? 1200);

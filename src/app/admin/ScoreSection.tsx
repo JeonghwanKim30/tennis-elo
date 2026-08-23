@@ -8,7 +8,15 @@ import { SquareDeleteButton } from "@/components/SquareDeleteButton";
 import { deleteMatchAction, enterMatchScoreAction } from "./actions";
 
 export async function ScoreSection() {
-  const [scheduledMatches, completedMatches] = await Promise.all([
+  // 세 쿼리 모두 독립적이라 병렬로 실행한다 — 예전엔 매치 두 건을 먼저 받아
+  // teamAPlayer1 등에서 playerIds를 뽑아낸 "다음"에야 유저 조회를 시작했는데,
+  // 그러면 원격 DB 왕복이 매번 3번 순서대로 나가 지연이 그대로 합산됐다.
+  // 유저 전체를 미리 한 번에 가져와도(동호회 규모상 수십~수백 명 수준) 이후
+  // Map 조회는 메모리 안에서 끝나므로, 매치 필드로 걸러서 조회하는 것과
+  // 결과는 동일하면서 왕복 횟수만 3번 -> 2번(병렬)으로 줄어든다. status 필터를
+  // 걸지 않는 이유는 추방/탈퇴된 유저가 과거 완료 경기에 등장할 수 있어서다
+  // (해당 유저만 목록에서 빠지면 매치 자체가 렌더링에서 통째로 스킵된다).
+  const [scheduledMatches, completedMatches, allUsers] = await Promise.all([
     prisma.match.findMany({
       where: { status: "PENDING" },
       include: { matchDay: true },
@@ -20,23 +28,13 @@ export async function ScoreSection() {
       orderBy: { approvalSeq: "desc" },
       take: 30,
     }),
+    prisma.user.findMany({
+      select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
+    }),
   ]);
 
-  const playerIds = Array.from(
-    new Set(
-      [...scheduledMatches, ...completedMatches].flatMap((m) =>
-        [m.teamAPlayer1, m.teamAPlayer2, m.teamBPlayer1, m.teamBPlayer2].filter(
-          (id): id is string => !!id
-        )
-      )
-    )
-  );
-  const players = await prisma.user.findMany({
-    where: { id: { in: playerIds } },
-    select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
-  });
   const playerById = new Map<string, TeamPlayer>(
-    players.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
+    allUsers.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
   );
 
   return (
