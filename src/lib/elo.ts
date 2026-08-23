@@ -214,36 +214,47 @@ const DOUBLES_INDIVIDUAL_WEIGHT_ALPHA = 1.0;
 const DOUBLES_GAP_REFERENCE = 400;
 
 /**
- * 복식 팀 델타(팀 평균 레이팅 기준으로 산출된 값 — 예전엔 팀원 둘에게 그대로
- * 동일하게 적용했음)를 개인 레이팅에 따라 차등 배분한다.
- * - 팀이 점수를 얻는 상황(teamDelta > 0, 승리 또는 유리한 무승부)이면 팀
- *   평균보다 레이팅이 낮은 하위 랭커가 더 많이 얻는다(리스크를 더 짊어졌으므로).
- * - 팀이 점수를 잃는 상황(teamDelta < 0, 패배 또는 불리한 무승부)이면 팀
- *   평균보다 레이팅이 높은 상위 랭커가 더 많이 잃는다(책임이 더 크므로).
- * 두 사람에게 배분된 값의 합은 항상 teamDelta*2로 보존된다 — 팀 전체
- * 이동량(평균 = teamDelta)은 기존과 동일하고, 개인 간 배분만 달라진다.
+ * 복식 팀 델타(BaseDelta — 팀 평균 레이팅 기준으로 산출된 값)를 팀원 개인
+ * 레이팅 편차에 따라 차등 배분한다(Weighted Individual Delta).
+ *
+ *   Diff_i      = Rating_i - Team_Avg
+ *   Weight_i    = 1.0 - alpha * Diff_i / 400   (승리/이득 시 — 하위 랭커일수록 Weight 커짐)
+ *   Weight_i    = 1.0 + alpha * Diff_i / 400   (패배/손실 시 — 상위 랭커일수록 Weight 커짐)
+ *   FinalDelta_i = round(BaseDelta * 2 * Weight_i / Weight_Sum)
+ *
+ * - 팀이 점수를 얻는 상황(teamDelta > 0)이면 팀 평균보다 레이팅이 낮은
+ *   하위 랭커가 더 많이 얻는다(리스크를 더 짊어졌으므로).
+ * - 팀이 점수를 잃는 상황(teamDelta < 0)이면 팀 평균보다 레이팅이 높은
+ *   상위 랭커가 더 많이 잃는다(책임이 더 크므로).
+ * 두 사람에게 배분된 값의 합은 항상 BaseDelta*2(=teamDelta*2)로 보존된다 —
+ * 팀원 2번째 값은 공식으로 독립 반올림하지 않고 "합계 - 1번째 값"으로 구해서
+ * 반올림 오차로 팀 전체 이동량이 어긋나지 않게 한다.
  */
 export function distributeDoublesDelta(
   ratings: [number, number],
   teamDelta: number,
   alpha: number = DOUBLES_INDIVIDUAL_WEIGHT_ALPHA
 ): [number, number] {
-  const [r1, r2] = ratings;
-  if (teamDelta === 0) return [teamDelta, teamDelta];
-  const avg = (r1 + r2) / 2;
+  const [rating1, rating2] = ratings;
+  const baseDelta = teamDelta;
+  if (baseDelta === 0) return [baseDelta, baseDelta];
+  const teamAvg = (rating1 + rating2) / 2;
 
-  const isGain = teamDelta > 0;
+  const isGain = baseDelta > 0;
   // 음수 가중치(극단적인 레이팅 격차)로 배분 방향이 뒤집히지 않도록 0 이상으로 고정한다.
-  const weightOf = (r: number) =>
-    Math.max(0, 1 + alpha * ((isGain ? avg - r : r - avg) / DOUBLES_GAP_REFERENCE));
+  const weightOf = (rating: number) => {
+    const diff = rating - teamAvg;
+    const raw = isGain ? 1.0 - (alpha * diff) / DOUBLES_GAP_REFERENCE : 1.0 + (alpha * diff) / DOUBLES_GAP_REFERENCE;
+    return Math.max(0, raw);
+  };
 
-  const w1 = weightOf(r1);
-  const w2 = weightOf(r2);
-  const avgWeight = (w1 + w2) / 2;
-  if (avgWeight === 0) return [teamDelta, teamDelta];
+  const weight1 = weightOf(rating1);
+  const weight2 = weightOf(rating2);
+  const weightSum = weight1 + weight2;
+  if (weightSum === 0) return [baseDelta, baseDelta];
 
-  const delta1 = Math.round((teamDelta * w1) / avgWeight);
-  const delta2 = teamDelta * 2 - delta1; // 나머지를 그대로 배정해 합을 정확히 보존한다.
+  const delta1 = Math.round((baseDelta * 2 * weight1) / weightSum);
+  const delta2 = baseDelta * 2 - delta1; // 나머지를 그대로 배정해 합을 정확히 보존한다.
   return [delta1, delta2];
 }
 

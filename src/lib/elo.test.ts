@@ -280,6 +280,27 @@ describe("distributeDoublesDelta", () => {
     expect(higherRated).not.toBe(lowerRated);
     expect(lowerRated).toBeGreaterThan(higherRated);
   });
+
+  it("matches the spec formula exactly for the A(1250)/B(1150) vs C(1200)/D(1200) win example", () => {
+    // Diff_A=+50, Diff_B=-50 → Weight_A=1-50/400=0.875, Weight_B=1+50/400=1.125
+    // FinalDelta_A = round(20*2*0.875/2.0)=18, FinalDelta_B = 40-18=22
+    const [deltaA, deltaB] = distributeDoublesDelta([1250, 1150], 20);
+    expect(deltaA).toBe(18);
+    expect(deltaB).toBe(22);
+    expect(deltaA).toBeLessThan(20);
+    expect(deltaB).toBeGreaterThan(20);
+    expect(deltaA + deltaB).toBe(40);
+  });
+
+  it("matches the spec formula exactly for the same matchup on a loss", () => {
+    // 패배: Weight_A=1+50/400=1.125, Weight_B=1-50/400=0.875
+    // FinalDelta_A = round(-20*2*1.125/2.0)=-22, FinalDelta_B = -40-(-22)=-18
+    const [deltaA, deltaB] = distributeDoublesDelta([1250, 1150], -20);
+    expect(deltaA).toBe(-22);
+    expect(deltaB).toBe(-18);
+    expect(deltaA).toBeLessThan(deltaB); // 상위 랭커(A)가 더 크게 잃음
+    expect(deltaA + deltaB).toBe(-40);
+  });
 });
 
 describe("calculateDoublesElo", () => {
