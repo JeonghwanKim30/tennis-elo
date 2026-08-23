@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { avatarSrc } from "@/lib/avatar";
 import { getCurrentUser } from "@/lib/session";
 import { deleteMatchDayAction } from "@/app/admin/actions";
+import { kstToday } from "@/lib/date";
 import { MatchDayList } from "./MatchDayList";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -47,7 +48,10 @@ export default async function MatchesPage({
   const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : PAGE_SIZE;
 
   const user = await getCurrentUser();
-  const today = new Date(new Date().toISOString().slice(0, 10));
+  // 한국 시간(KST) 기준 자정에 날짜가 바뀌어야 한다 — UTC 기준으로 계산하면
+  // KST 00:00~09:00 사이에는 여전히 "어제"로 취급돼 다가오는/지난 경기 구분이
+  // 어긋난다(lib/date.ts 참고).
+  const today = kstToday();
 
   // scope(탭)는 그대로 결과에 반영되는 조건이라 DB where 절로 옮겨도 최종
   // 목록은 동일하다 — 다만 지난/다가오는 경기 중 안 쓰는 절반을 애초에

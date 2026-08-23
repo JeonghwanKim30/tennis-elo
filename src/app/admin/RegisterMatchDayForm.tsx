@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { kstDateString } from "@/lib/date";
 import { createMatchDayAction, type CreateDayState } from "./actions";
 
 const initialState: CreateDayState = {};
@@ -23,7 +24,7 @@ export function RegisterMatchDayForm() {
           name="date"
           type="date"
           required
-          defaultValue={new Date().toISOString().slice(0, 10)}
+          defaultValue={kstDateString()}
           className="mt-1 w-full max-w-full appearance-none rounded-xl border border-border px-3 py-2 text-sm"
         />
       </div>

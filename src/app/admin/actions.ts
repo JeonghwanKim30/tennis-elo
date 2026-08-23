@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/session";
 import { INITIAL_RATING } from "@/lib/elo";
 import { applyEloForMatch, recalculateAllElo } from "@/lib/eloEngine";
 import { matchScoreSchema } from "@/lib/validation";
+import { dateOnly } from "@/lib/date";
 import type { MatchResult } from "@/generated/prisma/client";
 
 export interface MatchScoreState {
@@ -33,7 +34,13 @@ export async function createMatchDayAction(
   if (typeof dateStr !== "string" || !dateStr) {
     return { error: "날짜를 입력해주세요." };
   }
-  const date = new Date(dateStr);
+  // dateOnly()는 "YYYY-MM-DD"를 항상 UTC 자정 Date로 고정해서, 서버가 어느
+  // 타임존에서 돌든(대부분 UTC) 입력받은 달력 날짜 그대로 저장되게 한다 —
+  // KST 기준 "오늘" 비교(kstToday, lib/date.ts)와 동일한 규칙을 공유한다.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return { error: "날짜가 올바르지 않습니다." };
+  }
+  const date = dateOnly(dateStr);
   if (Number.isNaN(date.getTime())) {
     return { error: "날짜가 올바르지 않습니다." };
   }
