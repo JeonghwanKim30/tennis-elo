@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { avatarSrc } from "@/lib/avatar";
 import { RESULT_LABEL } from "@/lib/matchDisplay";
-import { PlayerBadge } from "@/components/PlayerBadge";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { MatchupRow } from "@/components/MatchupRow";
 import { MatchScoreCard } from "@/components/MatchScoreCard";
@@ -13,20 +12,16 @@ import { computeDailyMvp } from "@/lib/mvp";
 import type { MatchType, ParticipationStatus } from "@/generated/prisma/client";
 import { MatchComposerPanel } from "./MatchComposerPanel";
 import { AttendanceCarousel } from "./AttendanceCarousel";
+import { AttendanceMemberGrid } from "./AttendanceMemberGrid";
 import { MvpModal } from "./MvpModal";
 import { MatchDayPhotoGallery } from "./MatchDayPhotoGallery";
-import { setParticipationStatusAction, submitMatchScoreAction } from "./actions";
+import { submitMatchScoreAction } from "./actions";
 import { deleteMatchAction } from "@/app/admin/actions";
 
 const RSVP_LABEL: Record<ParticipationStatus, string> = {
   ATTENDING: "참여",
   NOT_ATTENDING: "불참",
   PENDING: "미응답",
-};
-const RSVP_BADGE: Record<ParticipationStatus, string> = {
-  ATTENDING: "bg-primary/10 text-primary",
-  NOT_ATTENDING: "bg-destructive/10 text-destructive",
-  PENDING: "bg-muted text-muted-foreground",
 };
 const ATTENDANCE_PAGE_SIZE = 9;
 
@@ -173,57 +168,18 @@ export default async function MatchDayPage({
           <AttendanceCarousel
             key={rsvpFilter}
             pages={chunk(visibleMembers, ATTENDANCE_PAGE_SIZE).map((pageMembers, pageIndex) => (
-              <div key={pageIndex} className="grid grid-cols-3 gap-3 sm:gap-4">
-                {pageMembers.map((m) => {
-                  const isSelf = user?.id === m.id;
-                  const canEdit = !!user && (isSelf || user.role === "ADMIN");
-                  return (
-                    <div
-                      key={m.id}
-                      className={`flex flex-col items-center gap-1.5 rounded-2xl p-2 ${
-                        isSelf ? "bg-accent/15 ring-1 ring-accent" : ""
-                      }`}
-                    >
-                      <PlayerBadge avatarSrc={m.avatarSrc} name={m.name} userId={m.id} />
-                      {isSelf && <span className="text-[10px] font-medium text-muted-foreground">나</span>}
-                      {canEdit ? (
-                        <div className="flex gap-1">
-                          <form action={setParticipationStatusAction.bind(null, day.id, m.id, "ATTENDING")}>
-                            <button
-                              className={`btn-press rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                m.status === "ATTENDING"
-                                  ? "bg-primary text-white"
-                                  : "bg-muted text-muted-foreground"
-                              }`}
-                            >
-                              참여
-                            </button>
-                          </form>
-                          <form
-                            action={setParticipationStatusAction.bind(null, day.id, m.id, "NOT_ATTENDING")}
-                          >
-                            <button
-                              className={`btn-press rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                m.status === "NOT_ATTENDING"
-                                  ? "bg-destructive text-white"
-                                  : "bg-muted text-muted-foreground"
-                              }`}
-                            >
-                              불참
-                            </button>
-                          </form>
-                        </div>
-                      ) : (
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${RSVP_BADGE[m.status]}`}
-                        >
-                          {RSVP_LABEL[m.status]}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              <AttendanceMemberGrid
+                key={pageIndex}
+                dayId={day.id}
+                members={pageMembers.map((m) => ({
+                  id: m.id,
+                  name: m.name,
+                  avatarSrc: m.avatarSrc,
+                  status: m.status,
+                  isSelf: user?.id === m.id,
+                  canEdit: !!user && (user.id === m.id || user.role === "ADMIN"),
+                }))}
+              />
             ))}
           />
         )}

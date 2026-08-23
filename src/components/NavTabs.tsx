@@ -25,6 +25,7 @@ export function NavTabs({ items }: { items: NavTabItem[] }) {
           <Link
             key={item.href}
             href={item.href}
+            prefetch
             aria-current={active ? "page" : undefined}
             className={`tab-pill btn-press touch-target shrink-0 rounded-full px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
               active

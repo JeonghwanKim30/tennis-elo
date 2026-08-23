@@ -38,7 +38,7 @@ export function MatchDayList({
   const [days, setDays] = useState(initialDays);
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
   const [confirmTarget, setConfirmTarget] = useState<MatchDayListItem | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; error?: boolean } | null>(null);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -52,14 +52,27 @@ export function MatchDayList({
     const dayId = confirmTarget.id;
     const dateLabel = confirmTarget.dateLabel;
     setConfirmTarget(null);
+    // 서버 응답을 기다리지 않고 즉시 페이드아웃부터 보여준다(낙관적 업데이트).
+    // 실제로 목록(days)에서 완전히 빼는 건 성공을 확인한 뒤에만 하고, 실패하면
+    // removingIds만 되돌려 원래 있던 자리에 그대로 다시 나타나게 한다 — 삭제
+    // 순서/정렬을 복원하는 로직 없이도 정확히 롤백된다.
     setRemovingIds((prev) => new Set(prev).add(dayId));
-    startTransition(() => {
-      deleteAction(dayId);
+    startTransition(async () => {
+      try {
+        await deleteAction(dayId);
+        setToast({ message: `${dateLabel} 경기 일자가 삭제되었습니다.` });
+        setTimeout(() => {
+          setDays((prev) => prev.filter((d) => d.id !== dayId));
+        }, REMOVE_ANIMATION_MS);
+      } catch {
+        setRemovingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(dayId);
+          return next;
+        });
+        setToast({ message: "삭제에 실패했습니다. 다시 시도해주세요.", error: true });
+      }
     });
-    setToast(`${dateLabel} 경기 일자가 삭제되었습니다.`);
-    setTimeout(() => {
-      setDays((prev) => prev.filter((d) => d.id !== dayId));
-    }, REMOVE_ANIMATION_MS);
   }
 
   return (
@@ -77,6 +90,7 @@ export function MatchDayList({
           >
             <Link
               href={`/matches/${d.id}`}
+              prefetch
               className={`btn-press block space-y-2.5 px-5 py-4 ${isAdmin ? "pr-14" : ""}`}
             >
               <div className="flex min-w-0 items-center justify-between gap-2">
@@ -166,8 +180,12 @@ export function MatchDayList({
 
       {toast && (
         <div className="fixed inset-x-0 top-4 z-[60] flex justify-center px-4">
-          <div className="surface-card border-primary/30 bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary shadow-lg">
-            {toast}
+          <div
+            className={`surface-card px-4 py-3 text-center text-sm font-medium shadow-lg ${
+              toast.error ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-primary/30 bg-primary/10 text-primary"
+            }`}
+          >
+            {toast.message}
           </div>
         </div>
       )}
