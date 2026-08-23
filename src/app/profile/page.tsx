@@ -63,7 +63,7 @@ export default async function ProfilePage({
         { teamBPlayer2: user.id },
       ],
     },
-    include: { matchDay: true },
+    include: { matchDay: true, eloHistory: { select: { userId: true, delta: true } } },
     orderBy: { approvalSeq: "desc" },
   });
 

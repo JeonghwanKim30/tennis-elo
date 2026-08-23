@@ -56,7 +56,10 @@ export default async function MatchDayPage({
   const day = await prisma.matchDay.findUnique({
     where: { id: dayId },
     include: {
-      matches: { orderBy: { submittedAt: "asc" } },
+      matches: {
+        orderBy: { submittedAt: "asc" },
+        include: { eloHistory: { select: { userId: true, delta: true } } },
+      },
       photos: { orderBy: { createdAt: "asc" } },
     },
   });
@@ -99,7 +102,12 @@ export default async function MatchDayPage({
   const completed = day.matches.filter((m) => m.status === "APPROVED");
 
   // 오늘의 MVP — 그날 완료된 경기들의 순 ELO 상승량 합계가 가장 높은 유저.
-  const mvpResult = computeDailyMvp(completed);
+  const mvpResult = computeDailyMvp(
+    completed.map((m) => ({
+      ...m,
+      eloChangeByPlayer: Object.fromEntries(m.eloHistory.map((h) => [h.userId, h.delta])),
+    }))
+  );
   const mvp = mvpResult ? playerById.get(mvpResult.userId) : null;
   const mvpTier = mvp
     ? getTier(
@@ -310,6 +318,7 @@ export default async function MatchDayPage({
               const b1 = playerById.get(m.teamBPlayer1);
               const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
               if (!a1 || !b1) return null;
+              const eloChangeByPlayer = Object.fromEntries(m.eloHistory.map((h) => [h.userId, h.delta]));
               return (
                 <li key={m.id} className="surface-card px-5 py-4">
                   <p className="mb-2 text-sm text-muted-foreground">
@@ -321,8 +330,7 @@ export default async function MatchDayPage({
                     teamA2={a2}
                     teamB1={b1}
                     teamB2={b2}
-                    teamAEloChange={m.teamAEloChange}
-                    teamBEloChange={m.teamBEloChange}
+                    eloChangeByPlayer={eloChangeByPlayer}
                     teamA1Tier={tierFor(a1.id, m.type)}
                     teamA2Tier={a2 ? tierFor(a2.id, m.type) : undefined}
                     teamB1Tier={tierFor(b1.id, m.type)}

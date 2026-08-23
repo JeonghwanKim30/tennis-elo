@@ -5,9 +5,11 @@ export interface DailyMvpInput {
   teamAPlayer2: string | null;
   teamBPlayer1: string;
   teamBPlayer2: string | null;
-  teamAEloChange: number | null;
-  teamBEloChange: number | null;
   result: "TEAM_A_WIN" | "TEAM_B_WIN" | "DRAW" | null;
+  // userId -> 실제 개인별 ELO 변동량(EloHistory.delta). 복식은 distributeDoublesDelta로
+  // 팀원별 차등 배분되므로 팀 전체 값(teamAEloChange/teamBEloChange)을 그대로 쓰면
+  // 실제로 더 적게/많이 받은 선수를 구분하지 못해 MVP 집계가 부정확해진다.
+  eloChangeByPlayer: Record<string, number>;
 }
 
 export interface DailyMvpResult {
@@ -29,13 +31,19 @@ export function computeDailyMvp(matches: DailyMvpInput[]): DailyMvpResult | null
   }
 
   for (const m of matches) {
-    if (m.teamAEloChange == null || m.teamBEloChange == null || !m.result) continue;
+    if (!m.result) continue;
     const aIds = [m.teamAPlayer1, m.teamAPlayer2].filter((id): id is string => !!id);
     const bIds = [m.teamBPlayer1, m.teamBPlayer2].filter((id): id is string => !!id);
     const aOutcome = m.result === "TEAM_A_WIN" ? "WIN" : m.result === "TEAM_B_WIN" ? "LOSS" : "DRAW";
     const bOutcome = m.result === "TEAM_A_WIN" ? "LOSS" : m.result === "TEAM_B_WIN" ? "WIN" : "DRAW";
-    for (const id of aIds) add(id, m.teamAEloChange, aOutcome);
-    for (const id of bIds) add(id, m.teamBEloChange, bOutcome);
+    for (const id of aIds) {
+      const gain = m.eloChangeByPlayer[id];
+      if (gain !== undefined) add(id, gain, aOutcome);
+    }
+    for (const id of bIds) {
+      const gain = m.eloChangeByPlayer[id];
+      if (gain !== undefined) add(id, gain, bOutcome);
+    }
   }
 
   let best: DailyMvpResult | null = null;

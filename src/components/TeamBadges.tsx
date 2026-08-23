@@ -29,7 +29,7 @@ export function TeamBadges({
   side,
   player1,
   player2,
-  eloChange,
+  eloChangeByPlayer,
   player1Tier,
   player2Tier,
   sideControl,
@@ -39,8 +39,10 @@ export function TeamBadges({
   side: "A" | "B";
   player1: TeamPlayer;
   player2?: TeamPlayer | null;
-  /** 완료된 경기에서만 존재 — 복식은 팀원 두 명에게 동일하게 적용된 값이다. */
-  eloChange?: number | null;
+  /** 완료된 경기에서만 존재 — userId 기준 실제 개인별 ELO 변동량(distributeDoublesDelta로
+   *  차등 배분된 값). 복식이어도 팀원 두 명이 서로 다른 값을 받을 수 있으므로 팀
+   *  전체에 동일값 하나를 쓰지 않고 선수 개인별로 조회해서 보여준다. */
+  eloChangeByPlayer?: Record<string, number>;
   /** 해당 경기 종목(단식/복식) 기준 각 선수의 현재 티어 — 있으면 아바타에 색 링으로 표시. */
   player1Tier?: Tier;
   player2Tier?: Tier;
@@ -49,7 +51,6 @@ export function TeamBadges({
    *  팀원 수와 무관하게 팀당 하나. */
   sideControl?: React.ReactNode;
 }) {
-  const showElo = eloChange !== undefined && eloChange !== null;
   const players =
     type === "DOUBLES" && player2
       ? [
@@ -60,12 +61,15 @@ export function TeamBadges({
 
   const playerStack = (
     <div className={`flex min-w-0 flex-col gap-2 ${side === "A" ? "items-start" : "items-end"}`}>
-      {players.map(({ player, tier }) => (
-        <div key={player.id} className={`flex items-center gap-1.5 ${side === "B" ? "flex-row-reverse" : ""}`}>
-          {showElo && <EloChangeBadge value={eloChange} />}
-          <PlayerBadge avatarSrc={player.avatarSrc} name={player.name} userId={player.id} tier={tier} />
-        </div>
-      ))}
+      {players.map(({ player, tier }) => {
+        const eloChange = eloChangeByPlayer?.[player.id];
+        return (
+          <div key={player.id} className={`flex items-center gap-1.5 ${side === "B" ? "flex-row-reverse" : ""}`}>
+            {eloChange !== undefined && <EloChangeBadge value={eloChange} />}
+            <PlayerBadge avatarSrc={player.avatarSrc} name={player.name} userId={player.id} tier={tier} />
+          </div>
+        );
+      })}
     </div>
   );
 

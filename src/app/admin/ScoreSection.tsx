@@ -16,7 +16,7 @@ export async function ScoreSection() {
     }),
     prisma.match.findMany({
       where: { status: "APPROVED" },
-      include: { matchDay: true },
+      include: { matchDay: true, eloHistory: { select: { userId: true, delta: true } } },
       orderBy: { approvalSeq: "desc" },
       take: 30,
     }),
@@ -92,6 +92,7 @@ export async function ScoreSection() {
               const b1 = playerById.get(m.teamBPlayer1);
               const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
               if (!a1 || !b1) return null;
+              const eloChangeByPlayer = Object.fromEntries(m.eloHistory.map((h) => [h.userId, h.delta]));
               return (
                 <li key={m.id} className="surface-card space-y-3 px-5 py-4">
                   <div className="flex items-center justify-between gap-2">
@@ -107,8 +108,7 @@ export async function ScoreSection() {
                     teamA2={a2}
                     teamB1={b1}
                     teamB2={b2}
-                    teamAEloChange={m.teamAEloChange}
-                    teamBEloChange={m.teamBEloChange}
+                    eloChangeByPlayer={eloChangeByPlayer}
                     resultLabel={m.result ? RESULT_LABEL[m.result] : undefined}
                     scoreLabel={
                       m.teamAScore !== null && m.teamBScore !== null

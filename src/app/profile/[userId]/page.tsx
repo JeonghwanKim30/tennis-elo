@@ -75,7 +75,7 @@ export default async function PublicProfilePage({
         { teamBPlayer2: userId },
       ],
     },
-    include: { matchDay: true },
+    include: { matchDay: true, eloHistory: { select: { userId: true, delta: true } } },
     orderBy: { approvalSeq: "desc" },
   });
 

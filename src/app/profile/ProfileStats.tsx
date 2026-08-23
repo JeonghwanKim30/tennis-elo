@@ -7,7 +7,7 @@ import { getTier, isPlacement } from "@/lib/tier";
 import type { Match, MatchDay } from "@/generated/prisma/client";
 
 type Tab = "all" | "singles" | "doubles";
-type MatchWithDay = Match & { matchDay: MatchDay };
+type MatchWithDay = Match & { matchDay: MatchDay; eloHistory: { userId: string; delta: number }[] };
 interface RatingLike {
   rating: number;
   wins: number;
@@ -119,6 +119,7 @@ export function ProfileStats({
             const teamBP1 = playerById.get(m.teamBPlayer1);
             const teamBP2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
             if (!teamAP1 || !teamBP1) return null;
+            const eloChangeByPlayer = Object.fromEntries(m.eloHistory.map((h) => [h.userId, h.delta]));
             return (
               <li key={m.id} className="surface-card px-5 py-4 text-sm">
                 <p className="mb-2 text-muted-foreground">
@@ -131,8 +132,7 @@ export function ProfileStats({
                   teamA2={teamAP2}
                   teamB1={teamBP1}
                   teamB2={teamBP2}
-                  teamAEloChange={m.teamAEloChange}
-                  teamBEloChange={m.teamBEloChange}
+                  eloChangeByPlayer={eloChangeByPlayer}
                   resultLabel={m.result ? RESULT_LABEL[m.result] : undefined}
                   scoreLabel={
                     m.teamAScore !== null && m.teamBScore !== null

@@ -8,8 +8,7 @@ export function MatchupRow({
   teamA2,
   teamB1,
   teamB2,
-  teamAEloChange,
-  teamBEloChange,
+  eloChangeByPlayer,
   teamA1Tier,
   teamA2Tier,
   teamB1Tier,
@@ -24,9 +23,9 @@ export function MatchupRow({
   teamA2?: TeamPlayer | null;
   teamB1: TeamPlayer;
   teamB2?: TeamPlayer | null;
-  /** 완료된 경기에서만 전달 — 팀원 전원에게 동일하게 적용된 ELO 변동량. */
-  teamAEloChange?: number | null;
-  teamBEloChange?: number | null;
+  /** 완료된 경기에서만 전달 — userId 기준 실제 개인별 ELO 변동량(EloHistory).
+   *  복식은 distributeDoublesDelta로 팀원별 차등 배분된 값이라 두 선수가 다를 수 있다. */
+  eloChangeByPlayer?: Record<string, number>;
   /** 이 경기 종목(단식/복식) 기준, 각 선수의 현재 티어. */
   teamA1Tier?: Tier;
   teamA2Tier?: Tier;
@@ -51,7 +50,7 @@ export function MatchupRow({
         side="A"
         player1={teamA1}
         player2={teamA2}
-        eloChange={teamAEloChange}
+        eloChangeByPlayer={eloChangeByPlayer}
         player1Tier={teamA1Tier}
         player2Tier={teamA2Tier}
         sideControl={teamASideControl}
@@ -66,7 +65,7 @@ export function MatchupRow({
         side="B"
         player1={teamB1}
         player2={teamB2}
-        eloChange={teamBEloChange}
+        eloChangeByPlayer={eloChangeByPlayer}
         player1Tier={teamB1Tier}
         player2Tier={teamB2Tier}
         sideControl={teamBSideControl}
