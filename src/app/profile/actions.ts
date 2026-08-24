@@ -6,6 +6,10 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { bioSchema, phoneSchema } from "@/lib/validation";
 import { lastFourDigits } from "@/lib/phone";
+import { avatarSrc } from "@/lib/avatar";
+import { dateOnly } from "@/lib/date";
+import { getTier, isPlacement } from "@/lib/tier";
+import { computeRecapStats, type MatchOutcome, type RecapMatchRecord, type RecapStats } from "@/lib/recap";
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
@@ -116,4 +120,138 @@ export async function markTierSeenAction(singlesTierKey: string, doublesTierKey:
     where: { id: user.id },
     data: { lastSeenTierSingles: singlesTierKey, lastSeenTierDoubles: doublesTierKey },
   });
+}
+
+export interface RecapCardData {
+  stats: RecapStats;
+  /** mostFrequentPartnerId/bestOpponent/worstOpponent가 가리키는 유저 id -> 이름. */
+  nameById: Record<string, string>;
+  userName: string;
+  avatarSrc: string;
+  tierLabel: string;
+  tierColor: string;
+  tierTextColor: string;
+  isPlacementNow: boolean;
+  periodStart: string;
+  periodEnd: string;
+}
+
+export interface RecapState {
+  error?: string;
+  data?: RecapCardData;
+}
+
+const RECAP_MAX_RANGE_DAYS = 366;
+
+/**
+ * 기간(월간/시즌) 리캡 카드용 통계를 계산한다. 순수 집계 로직은
+ * lib/recap.ts(computeRecapStats)에 있고, 여기서는 DB 조회 + 그 결과를
+ * RecapMatchRecord로 변환 + 이름 조회만 담당한다.
+ */
+export async function getRecapStatsAction(startDateStr: string, endDateStr: string): Promise<RecapState> {
+  const user = await requireUser();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDateStr) || !/^\d{4}-\d{2}-\d{2}$/.test(endDateStr)) {
+    return { error: "날짜 형식이 올바르지 않습니다." };
+  }
+  const start = dateOnly(startDateStr);
+  // 종료일은 "그날 전체"를 포함해야 하므로, 다음날 자정을 배타적 상한으로 쓴다.
+  const endExclusive = new Date(dateOnly(endDateStr).getTime() + 24 * 60 * 60 * 1000);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(endExclusive.getTime()) || start >= endExclusive) {
+    return { error: "종료일은 시작일보다 늦어야 합니다." };
+  }
+  const rangeDays = (endExclusive.getTime() - start.getTime()) / (24 * 60 * 60 * 1000);
+  if (rangeDays > RECAP_MAX_RANGE_DAYS) {
+    return { error: `기간은 최대 ${RECAP_MAX_RANGE_DAYS}일까지 선택할 수 있습니다.` };
+  }
+
+  const [matches, ratings, profileUser] = await Promise.all([
+    prisma.match.findMany({
+      where: {
+        status: "APPROVED",
+        matchDay: { date: { gte: start, lt: endExclusive } },
+        OR: [
+          { teamAPlayer1: user.id },
+          { teamAPlayer2: user.id },
+          { teamBPlayer1: user.id },
+          { teamBPlayer2: user.id },
+        ],
+      },
+      include: {
+        matchDay: { select: { date: true } },
+        eloHistory: { where: { userId: user.id }, select: { delta: true, ratingAfter: true } },
+      },
+      orderBy: { approvalSeq: "asc" },
+    }),
+    prisma.eloRating.findMany({ where: { userId: user.id } }),
+    prisma.user.findUnique({
+      where: { id: user.id },
+      select: { name: true, gender: true, profileImage: true, profileImageType: true },
+    }),
+  ]);
+  if (!profileUser) {
+    return { error: "유저 정보를 찾을 수 없습니다." };
+  }
+
+  const records: RecapMatchRecord[] = matches.map((match) => {
+    const isTeamA = match.teamAPlayer1 === user.id || match.teamAPlayer2 === user.id;
+    const outcome: MatchOutcome =
+      match.result === "DRAW" ? "DRAW" : (match.result === "TEAM_A_WIN") === isTeamA ? "WIN" : "LOSS";
+    const teammateId = isTeamA
+      ? match.teamAPlayer1 === user.id
+        ? match.teamAPlayer2
+        : match.teamAPlayer1
+      : match.teamBPlayer1 === user.id
+        ? match.teamBPlayer2
+        : match.teamBPlayer1;
+    const opponentIds = (isTeamA ? [match.teamBPlayer1, match.teamBPlayer2] : [match.teamAPlayer1, match.teamAPlayer2]).filter(
+      (id): id is string => !!id
+    );
+    const hist = match.eloHistory[0];
+    return {
+      matchId: match.id,
+      approvalSeq: match.approvalSeq ?? 0,
+      date: match.matchDay.date,
+      type: match.type,
+      outcome,
+      delta: hist?.delta ?? 0,
+      ratingAfter: hist?.ratingAfter ?? 1200,
+      opponentIds,
+      teammateId: teammateId ?? null,
+    };
+  });
+
+  const stats = computeRecapStats(records);
+
+  const idsToResolve = [stats.mostFrequentPartnerId, stats.bestOpponent?.playerId, stats.worstOpponent?.playerId].filter(
+    (id): id is string => !!id
+  );
+  const players = idsToResolve.length
+    ? await prisma.user.findMany({ where: { id: { in: idsToResolve } }, select: { id: true, name: true } })
+    : [];
+  const nameById = Object.fromEntries(players.map((p) => [p.id, p.name]));
+
+  const singles = ratings.find((r) => r.type === "SINGLES");
+  const doubles = ratings.find((r) => r.type === "DOUBLES");
+  const singlesTotal = (singles?.wins ?? 0) + (singles?.losses ?? 0) + (singles?.draws ?? 0);
+  const doublesTotal = (doubles?.wins ?? 0) + (doubles?.losses ?? 0) + (doubles?.draws ?? 0);
+  const tierRating = Math.max(singles?.rating ?? 1200, doubles?.rating ?? 1200);
+  const peakTotal = (singles?.rating ?? 1200) >= (doubles?.rating ?? 1200) ? singlesTotal : doublesTotal;
+  const placementNow = isPlacement(peakTotal);
+  const tier = getTier(tierRating);
+
+  return {
+    data: {
+      stats,
+      nameById,
+      userName: profileUser.name,
+      avatarSrc: avatarSrc(profileUser),
+      tierLabel: placementNow ? "배치 중" : tier.label,
+      tierColor: placementNow ? "var(--muted)" : tier.color,
+      tierTextColor: placementNow ? "var(--muted-foreground)" : tier.textColor,
+      isPlacementNow: placementNow,
+      periodStart: startDateStr,
+      periodEnd: endDateStr,
+    },
+  };
 }

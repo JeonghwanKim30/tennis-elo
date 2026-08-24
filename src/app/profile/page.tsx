@@ -11,6 +11,7 @@ import { BioEditor } from "./BioEditor";
 import { PhoneEditor } from "./PhoneEditor";
 import { ProfileStats } from "./ProfileStats";
 import { TierChangeBanner } from "./TierChangeBanner";
+import { RecapButton } from "./RecapButton";
 
 export default async function ProfilePage() {
   const authUser = await requireUser();
@@ -116,6 +117,8 @@ export default async function ProfilePage() {
           </div>
         </div>
       </div>
+
+      <RecapButton />
 
       <TierChangeBanner
         singlesChange={singlesTierChange}
