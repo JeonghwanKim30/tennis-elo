@@ -132,8 +132,8 @@ export const RecapCard = forwardRef<HTMLDivElement, { data: RecapCardData }>(fun
           )}
         </div>
 
-        <p className="text-center text-[9px] leading-tight whitespace-nowrap text-[#5f7b70]/80">
-          테디베어 · 동호회 테니스 전적 관리
+        <p className="text-center text-[9px] leading-tight whitespace-nowrap text-gray-400">
+          Tennis DDI.
         </p>
       </div>
     </div>
