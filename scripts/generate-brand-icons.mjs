@@ -36,7 +36,6 @@ function mascotSvg({ size, withText }) {
     : "";
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100">
-    <rect x="0" y="0" width="100" height="100" fill="#ffffff" />
     <g transform="translate(${tx} ${ty}) scale(${scale})">
       <circle cx="32" cy="32" r="30" fill="${PRIMARY}" />
       <path
