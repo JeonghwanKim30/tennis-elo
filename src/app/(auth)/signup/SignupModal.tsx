@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { signupAction, type SignupState } from "./actions";
-import { CloseIcon } from "@/components/icons";
+import { ModalOverlay } from "@/components/ModalOverlay";
+import { ModalHeader } from "@/components/ModalHeader";
 
 const initialState: SignupState = {};
 // 가입 완료 화면을 잠깐 보여준 뒤 자동으로 모달을 닫고, 로그인 화면 쪽에
@@ -37,38 +37,12 @@ export function SignupModal({ onSuccess }: { onSuccess: (message: string) => voi
         폼 제출이 바깥 폼과 뒤섞여 조용히 무시되는 문제가 있었다. document.body로
         포탈링해 트리거 위치와 무관하게 항상 최상위에서 독립적으로 렌더링한다.
       */}
-      {open &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            role="presentation"
-            onClick={closeModal}
-          >
-            <div
-              className="surface-card w-full max-w-sm p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="signup-modal-title"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <h2 id="signup-modal-title" className="text-lg font-semibold">
-                  회원가입
-                </h2>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  aria-label="닫기"
-                  className="btn-press touch-target flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
-                >
-                  <CloseIcon className="h-5 w-5" />
-                </button>
-              </div>
-              <SignupModalBody key={instanceKey} onClose={closeModal} onSuccess={onSuccess} />
-            </div>
-          </div>,
-          document.body
-        )}
+      {open && (
+        <ModalOverlay onClose={closeModal} labelledBy="signup-modal-title">
+          <ModalHeader id="signup-modal-title" title="회원가입" onClose={closeModal} />
+          <SignupModalBody key={instanceKey} onClose={closeModal} onSuccess={onSuccess} />
+        </ModalOverlay>
+      )}
     </>
   );
 }

@@ -1,10 +1,10 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { createPortal } from "react-dom";
 import { toBlob } from "html-to-image";
 import { kstDateString } from "@/lib/date";
 import { CloseIcon } from "@/components/icons";
+import { ModalOverlay } from "@/components/ModalOverlay";
 import { getRecapStatsAction, type RecapCardData, type RecapMode } from "./actions";
 import { RecapCard } from "./RecapCard";
 
@@ -112,32 +112,25 @@ export function RecapModalContent({ onClose }: { onClose: () => void }) {
     }
   }
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3"
-      role="presentation"
-      onClick={onClose}
+  return (
+    <ModalOverlay
+      onClose={onClose}
+      labelledBy="recap-modal-title"
+      panelClassName="surface-card flex max-h-[90vh] w-full max-w-md flex-col gap-3 overflow-y-auto p-4"
     >
-      <div
-        className="surface-card flex max-h-[90vh] w-full max-w-md flex-col gap-3 overflow-y-auto p-4"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="recap-modal-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <h2 id="recap-modal-title" className="text-base font-bold">
-            📊 리캡 카드 만들기
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="닫기"
-            className="btn-press touch-target flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-muted hover:text-gray-600"
-          >
-            <CloseIcon className="h-4 w-4" />
-          </button>
-        </div>
+      <div className="flex items-center justify-between">
+        <h2 id="recap-modal-title" className="text-base font-bold">
+          📊 리캡 카드 만들기
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="닫기"
+          className="btn-press touch-target flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-muted hover:text-gray-600"
+        >
+          <CloseIcon className="h-4 w-4" />
+        </button>
+      </div>
 
         {/* 카드를 생성하고 나면 기간 선택 컨트롤(모드 토글+연/월 셀렉트)을
             접어서 카드+저장 버튼이 한 화면에 더 넉넉히 들어오게 한다 —
@@ -192,9 +185,7 @@ export function RecapModalContent({ onClose }: { onClose: () => void }) {
             {downloadError && <p className="text-center text-xs text-destructive">{downloadError}</p>}
           </div>
         )}
-      </div>
-    </div>,
-    document.body
+    </ModalOverlay>
   );
 }
 

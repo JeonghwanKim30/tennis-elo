@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { UserListRow } from "./UserListRow";
 
 const REMOVE_ANIMATION_MS = 200;
@@ -88,39 +89,13 @@ export function UserManagementList({
       </div>
 
       {confirmTarget && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setConfirmTarget(null)}
-        >
-          <div
-            className="surface-card w-full max-w-xs p-5"
-            role="alertdialog"
-            aria-modal="true"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="mb-1 font-semibold">{confirmTarget.name}님을 추방할까요?</p>
-            <p className="mb-4 text-sm text-muted-foreground">
-              추방된 회원은 로그인할 수 없고 목록에서 바로 제외됩니다. 이미 기록된 경기 이력은 그대로
-              남습니다.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmTarget(null)}
-                className="btn-press touch-target rounded-full bg-muted px-4 py-2 text-sm font-medium text-foreground/70"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={confirmBan}
-                className="btn-press touch-target rounded-full bg-destructive px-4 py-2 text-sm font-medium text-white"
-              >
-                추방
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title={`${confirmTarget.name}님을 추방할까요?`}
+          description="추방된 회원은 로그인할 수 없고 목록에서 바로 제외됩니다. 이미 기록된 경기 이력은 그대로 남습니다."
+          confirmLabel="추방"
+          onCancel={() => setConfirmTarget(null)}
+          onConfirm={confirmBan}
+        />
       )}
     </section>
   );

@@ -3,6 +3,7 @@
 import { memo, useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { TrashIcon } from "@/components/icons";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DayParticipantsPreview, type DayParticipant } from "./DayParticipantsPreview";
 
 const REMOVE_ANIMATION_MS = 200;
@@ -146,43 +147,13 @@ export function MatchDayList({
       )}
 
       {confirmTarget && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          role="presentation"
-          onClick={() => setConfirmTarget(null)}
-        >
-          <div
-            className="surface-card w-full max-w-sm p-5"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="delete-day-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p id="delete-day-title" className="mb-1 font-semibold">
-              경기 일자를 삭제하시겠습니까?
-            </p>
-            <p className="mb-4 text-sm text-muted-foreground">
-              해당 일자({confirmTarget.dateLabel})에 등록된 모든 경기 데이터와 참석 투표 내역이
-              함께 삭제되며, 이 작업은 복구할 수 없습니다.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmTarget(null)}
-                className="btn-press touch-target rounded-full bg-muted px-4 py-2 text-sm font-medium text-foreground/70"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={confirmDelete}
-                className="btn-press touch-target rounded-full bg-destructive px-4 py-2 text-sm font-medium text-white"
-              >
-                삭제 확인
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="경기 일자를 삭제하시겠습니까?"
+          description={`해당 일자(${confirmTarget.dateLabel})에 등록된 모든 경기 데이터와 참석 투표 내역이 함께 삭제되며, 이 작업은 복구할 수 없습니다.`}
+          confirmLabel="삭제 확인"
+          onCancel={() => setConfirmTarget(null)}
+          onConfirm={confirmDelete}
+        />
       )}
 
       {toast && (

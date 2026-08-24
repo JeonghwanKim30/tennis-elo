@@ -2,7 +2,9 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { PencilIcon, CloseIcon } from "@/components/icons";
+import { PencilIcon } from "@/components/icons";
+import { ModalOverlay } from "@/components/ModalOverlay";
+import { ModalHeader } from "@/components/ModalHeader";
 import { formatPhone } from "@/lib/phone";
 import { updatePhoneAction, type PhoneState } from "./actions";
 
@@ -47,46 +49,20 @@ export function PhoneEditor({ initialPhone }: { initialPhone: string }) {
         </button>
       </span>
 
-      {open &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            role="presentation"
-            onClick={closeModal}
-          >
-            <div
-              className="surface-card w-full max-w-sm p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="phone-modal-title"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <h2 id="phone-modal-title" className="text-lg font-semibold">
-                  전화번호 변경
-                </h2>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  aria-label="닫기"
-                  className="btn-press touch-target flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
-                >
-                  <CloseIcon className="h-5 w-5" />
-                </button>
-              </div>
-              <PhoneEditorBody
-                key={instanceKey}
-                currentPhone={displayPhone}
-                onClose={closeModal}
-                onSuccess={(newPhone, message) => {
-                  setDisplayPhone(newPhone);
-                  setToast(message);
-                }}
-              />
-            </div>
-          </div>,
-          document.body
-        )}
+      {open && (
+        <ModalOverlay onClose={closeModal} labelledBy="phone-modal-title">
+          <ModalHeader id="phone-modal-title" title="전화번호 변경" onClose={closeModal} />
+          <PhoneEditorBody
+            key={instanceKey}
+            currentPhone={displayPhone}
+            onClose={closeModal}
+            onSuccess={(newPhone, message) => {
+              setDisplayPhone(newPhone);
+              setToast(message);
+            }}
+          />
+        </ModalOverlay>
+      )}
 
       {toast &&
         createPortal(
