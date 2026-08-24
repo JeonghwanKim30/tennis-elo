@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { TrashIcon } from "@/components/icons";
 import { DayParticipantsPreview, type DayParticipant } from "./DayParticipantsPreview";
@@ -19,26 +19,31 @@ export interface MatchDayListItem {
   photoCount: number;
 }
 
-// 경기 일자 카드 목록. 관리자에게만 카드 우측 상단에 삭제 버튼이 보이고,
-// 클릭하면 확인 모달 -> 서버 액션 호출과 동시에(응답을 기다리지 않고) 즉시
-// 애니메이션과 함께 목록에서 제거 + 성공 토스트를 띄운다(다른 관리자 화면의
-// 낙관적 삭제 패턴과 동일). 필터/페이지네이션이 바뀌어 서버에서 새 목록이
-// 내려오면 내부 상태를 다시 동기화해야 하므로, 호출하는 쪽(matches/page.tsx)이
-// scope·mine·limit이 바뀔 때마다 다른 key를 넘겨 이 컴포넌트를 통째로
-// 리마운트시킨다(AttendanceCarousel과 같은 패턴).
+// 경기 일자 카드 목록. "내가 참여하는 경기만" 필터와 "더보기" 페이지네이션은
+// 서버가 scope(전체/다가오는/지난)로 이미 걸러 내려준 days 배열 안에서 순수
+// 배열 연산(filter/slice)으로 끝나는 조건이라, 예전처럼 <Link>로 서버를
+// 다시 왕복하지 않고 여기서 useState/useMemo로 즉시 처리한다 — scope만 바뀌면
+// 실제로 다른 DB 쿼리가 필요하므로 그건 그대로 matches/page.tsx의 서버 탭으로
+// 남겨둔다.
 export function MatchDayList({
   days: initialDays,
   isAdmin,
   deleteAction,
+  currentUserId,
+  pageSize,
 }: {
   days: MatchDayListItem[];
   isAdmin: boolean;
   deleteAction: (dayId: string) => Promise<void>;
+  currentUserId?: string;
+  pageSize: number;
 }) {
   const [days, setDays] = useState(initialDays);
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
   const [confirmTarget, setConfirmTarget] = useState<MatchDayListItem | null>(null);
   const [toast, setToast] = useState<{ message: string; error?: boolean } | null>(null);
+  const [mineOnly, setMineOnly] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(pageSize);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -46,6 +51,27 @@ export function MatchDayList({
     const timer = setTimeout(() => setToast(null), TOAST_DURATION_MS);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  // days(scope 변경으로 서버에서 새 목록이 내려옴) 또는 mineOnly가 바뀔 때만
+  // 다시 계산한다 — 필터 자체는 이미 갖고 있는 배열에 대한 단순 filter라
+  // 매 렌더마다 다시 돌 이유가 없다.
+  const filteredDays = useMemo(
+    () =>
+      mineOnly && currentUserId
+        ? days.filter((d) => d.attending.some((p) => p.id === currentUserId))
+        : days,
+    [days, mineOnly, currentUserId]
+  );
+  const visibleDays = useMemo(() => filteredDays.slice(0, visibleCount), [filteredDays, visibleCount]);
+  const hasMore = filteredDays.length > visibleDays.length;
+
+  const toggleMineOnly = useCallback(() => {
+    setMineOnly((v) => !v);
+    setVisibleCount(pageSize); // 필터가 바뀌면 페이지네이션도 처음부터 다시 보여준다.
+  }, [pageSize]);
+  const showMore = useCallback(() => setVisibleCount((c) => c + pageSize), [pageSize]);
+
+  const requestDelete = useCallback((day: MatchDayListItem) => setConfirmTarget(day), []);
 
   function confirmDelete() {
     if (!confirmTarget) return;
@@ -77,66 +103,47 @@ export function MatchDayList({
 
   return (
     <>
-      <ul className="min-h-[160px] space-y-3">
-        {days.length === 0 && (
-          <p className="text-sm text-muted-foreground">해당하는 경기일이 없습니다.</p>
-        )}
-        {days.map((d) => (
-          <li
-            key={d.id}
-            className={`surface-card relative transition-all duration-200 ease-out ${
-              removingIds.has(d.id) ? "-translate-x-2 opacity-0" : "opacity-100"
+      {currentUserId && (
+        <div className="mb-3 flex justify-center sm:justify-start">
+          <button
+            type="button"
+            onClick={toggleMineOnly}
+            aria-pressed={mineOnly}
+            className={`tab-pill btn-press touch-target rounded-full px-4 py-2 text-xs font-medium ${
+              mineOnly ? "bg-accent/40 text-accent-foreground" : "bg-muted text-foreground/70"
             }`}
           >
-            <Link
-              href={`/matches/${d.id}`}
-              prefetch
-              className={`btn-press block space-y-2.5 px-5 py-4 ${isAdmin ? "pr-14" : ""}`}
-            >
-              <div className="flex min-w-0 items-center justify-between gap-2">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="truncate font-medium">{d.dateLabel}</span>
-                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                    {d.dDayLabel}
-                  </span>
-                  {(d.time || d.location) && (
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {[d.time, d.location].filter(Boolean).join(" · ")}
-                    </span>
-                  )}
-                </div>
-                {d.thumbnailSrc && (
-                  <div className="group relative shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={d.thumbnailSrc}
-                      alt=""
-                      className="h-12 w-12 rounded-xl border border-emerald-100/50 object-cover shadow-sm transition-transform duration-200 ease-out group-hover:scale-105 group-active:scale-105"
-                    />
-                    <span className="absolute -right-1.5 -bottom-1.5 rounded-full border border-emerald-200 bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 shadow-sm">
-                      📷 {d.photoCount}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <DayParticipantsPreview participants={d.attending} />
-            </Link>
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setConfirmTarget(d);
-                }}
-                aria-label={`${d.dateLabel} 경기 일자 삭제`}
-                className="btn-press touch-target absolute top-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              >
-                <TrashIcon className="h-4 w-4" />
-              </button>
-            )}
-          </li>
+            {mineOnly ? "✓ 내가 참여하는 경기만" : "내가 참여하는 경기만 보기"}
+          </button>
+        </div>
+      )}
+
+      <ul className="min-h-[160px] space-y-3">
+        {visibleDays.length === 0 && (
+          <p className="text-sm text-muted-foreground">해당하는 경기일이 없습니다.</p>
+        )}
+        {visibleDays.map((d) => (
+          <MatchDayCard
+            key={d.id}
+            day={d}
+            isAdmin={isAdmin}
+            isRemoving={removingIds.has(d.id)}
+            onRequestDelete={requestDelete}
+          />
         ))}
       </ul>
+
+      {hasMore && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={showMore}
+            className="btn-press touch-target rounded-full bg-muted px-6 py-2.5 text-sm font-medium text-foreground/70"
+          >
+            더보기 ({filteredDays.length - visibleDays.length}개 더 있음)
+          </button>
+        </div>
+      )}
 
       {confirmTarget && (
         <div
@@ -192,3 +199,74 @@ export function MatchDayList({
     </>
   );
 }
+
+// "내가 참여하는 경기만" 필터를 켜고 끄거나 "더보기"를 눌러도, 이미 화면에
+// 떠 있던 카드는 자기 props(day/isAdmin/isRemoving)가 실제로 안 바뀌면 다시
+// 그리지 않는다 — 경기일이 늘어날수록 카드 개수도 그대로 늘어나는 리스트라,
+// 필터 전환마다 전부 재렌더링하면 그 자체가 버벅임의 원인이 된다.
+const MatchDayCard = memo(function MatchDayCard({
+  day,
+  isAdmin,
+  isRemoving,
+  onRequestDelete,
+}: {
+  day: MatchDayListItem;
+  isAdmin: boolean;
+  isRemoving: boolean;
+  onRequestDelete: (day: MatchDayListItem) => void;
+}) {
+  return (
+    <li
+      className={`surface-card relative transition-all duration-200 ease-out ${
+        isRemoving ? "-translate-x-2 opacity-0" : "opacity-100"
+      }`}
+    >
+      <Link
+        href={`/matches/${day.id}`}
+        prefetch
+        className={`btn-press block space-y-2.5 px-5 py-4 ${isAdmin ? "pr-14" : ""}`}
+      >
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="truncate font-medium">{day.dateLabel}</span>
+            <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+              {day.dDayLabel}
+            </span>
+            {(day.time || day.location) && (
+              <span className="shrink-0 text-xs text-muted-foreground">
+                {[day.time, day.location].filter(Boolean).join(" · ")}
+              </span>
+            )}
+          </div>
+          {day.thumbnailSrc && (
+            <div className="group relative shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={day.thumbnailSrc}
+                alt=""
+                className="h-12 w-12 rounded-xl border border-emerald-100/50 object-cover shadow-sm transition-transform duration-200 ease-out group-hover:scale-105 group-active:scale-105"
+              />
+              <span className="absolute -right-1.5 -bottom-1.5 rounded-full border border-emerald-200 bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 shadow-sm">
+                📷 {day.photoCount}
+              </span>
+            </div>
+          )}
+        </div>
+        <DayParticipantsPreview participants={day.attending} />
+      </Link>
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            onRequestDelete(day);
+          }}
+          aria-label={`${day.dateLabel} 경기 일자 삭제`}
+          className="btn-press touch-target absolute top-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        >
+          <TrashIcon className="h-4 w-4" />
+        </button>
+      )}
+    </li>
+  );
+});

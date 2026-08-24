@@ -23,29 +23,21 @@ function dDayLabel(diffDays: number): string {
   return diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
 }
 
-// tabFilter(scope)와 isMyOnly(mine)는 서로 완전히 독립적인 상태다 — 한쪽을
-// 바꾼다고 다른 쪽 값을 절대 바꾸거나 초기화하지 않는다("다가오는 경기" 탭에
-// 머문 채로 필터를 켜고 꺼도 탭이 "전체 경기"로 튕기지 않아야 함). "다가오는
-// 경기"가 기본값이라 URL에서는 생략된다.
-function buildHref(scope: Scope, mine: boolean, limit?: number) {
-  const params = new URLSearchParams();
-  if (scope !== "upcoming") params.set("scope", scope);
-  if (mine) params.set("mine", "1");
-  if (limit && limit !== PAGE_SIZE) params.set("limit", String(limit));
-  const qs = params.toString();
-  return qs ? `/matches?${qs}` : "/matches";
+// scope(전체/다가오는/지난)만 URL로 관리한다 — 이 값을 바꾸면 DB where
+// 절 자체가 달라져(genuinely 다른 쿼리) 서버 왕복이 필요하다. "내가 참여하는
+// 경기만"과 "더보기" 페이지네이션은 이미 받은 목록 안에서의 순수 필터/자르기라
+// MatchDayList(클라이언트)에서 즉시 처리한다.
+function buildScopeHref(scope: Scope) {
+  return scope === "upcoming" ? "/matches" : `/matches?scope=${scope}`;
 }
 
 export default async function MatchesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ scope?: string; mine?: string; limit?: string }>;
+  searchParams: Promise<{ scope?: string }>;
 }) {
-  const { scope: rawScope, mine: rawMine, limit: rawLimit } = await searchParams;
-  const mineOnly = rawMine === "1";
+  const { scope: rawScope } = await searchParams;
   const scope: Scope = rawScope === "all" || rawScope === "past" ? rawScope : "upcoming";
-  const parsedLimit = Number(rawLimit);
-  const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : PAGE_SIZE;
 
   const user = await getCurrentUser();
   // 한국 시간(KST) 기준 자정에 날짜가 바뀌어야 한다 — UTC 기준으로 계산하면
@@ -83,17 +75,7 @@ export default async function MatchesPage({
     diffDays: Math.round((d.date.getTime() - today.getTime()) / DAY_MS),
   }));
 
-  // "내가 참여하는 경기만"(mine) 필터 — scope와 서로 독립적인 조건이라 이미
-  // DB에서 걸러진 scope 결과 위에 교집합(AND)으로 한 번 더 좁히기만 하면 된다.
-  const filteredDays = mineOnly && user
-    ? daysWithDiff.filter((d) => d.participants.some((p) => p.userId === user.id && p.status === "ATTENDING"))
-    : daysWithDiff;
-
-  filteredDays.sort((a, b) => Math.abs(a.diffDays) - Math.abs(b.diffDays) || a.diffDays - b.diffDays);
-
-  const total = filteredDays.length;
-  const visibleDays = filteredDays.slice(0, limit);
-  const hasMore = total > visibleDays.length;
+  daysWithDiff.sort((a, b) => Math.abs(a.diffDays) - Math.abs(b.diffDays) || a.diffDays - b.diffDays);
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 px-4 py-8">
@@ -104,7 +86,7 @@ export default async function MatchesPage({
             {SCOPE_TABS.map(({ key, label }) => (
               <Link
                 key={key}
-                href={buildHref(key, mineOnly)}
+                href={buildScopeHref(key)}
                 scroll={false}
                 aria-current={scope === key ? "page" : undefined}
                 className={`tab-pill btn-press touch-target rounded-full px-2 py-1 text-[11px] font-medium whitespace-nowrap sm:px-3 sm:py-1.5 sm:text-sm ${
@@ -117,29 +99,14 @@ export default async function MatchesPage({
           </div>
         </div>
 
-        {user && (
-          <div className="flex justify-center sm:justify-start">
-            {/* scope는 그대로 두고 mine만 뒤집는다 — 탭 선택은 절대 건드리지 않는다. */}
-            <Link
-              href={buildHref(scope, !mineOnly)}
-              scroll={false}
-              aria-pressed={mineOnly}
-              className={`tab-pill btn-press touch-target rounded-full px-4 py-2 text-xs font-medium ${
-                mineOnly ? "bg-accent/40 text-accent-foreground" : "bg-muted text-foreground/70"
-              }`}
-            >
-              {mineOnly ? "✓ 내가 참여하는 경기만" : "내가 참여하는 경기만 보기"}
-            </Link>
-          </div>
-        )}
         <p className="text-center text-xs text-muted-foreground sm:text-left">
           오늘과 날짜 차이가 가까운 경기일 순으로 정렬됩니다.
         </p>
       </div>
 
       <MatchDayList
-        key={`${scope}-${mineOnly}-${limit}`}
-        days={visibleDays.map((d) => ({
+        key={scope}
+        days={daysWithDiff.map((d) => ({
           id: d.id,
           dateLabel: d.date.toISOString().slice(0, 10),
           dDayLabel: dDayLabel(d.diffDays),
@@ -159,19 +126,9 @@ export default async function MatchesPage({
         }))}
         isAdmin={user?.role === "ADMIN"}
         deleteAction={deleteMatchDayAction}
+        currentUserId={user?.id}
+        pageSize={PAGE_SIZE}
       />
-
-      {hasMore && (
-        <div className="flex justify-center">
-          <Link
-            href={buildHref(scope, mineOnly, limit + PAGE_SIZE)}
-            scroll={false}
-            className="btn-press touch-target rounded-full bg-muted px-6 py-2.5 text-sm font-medium text-foreground/70"
-          >
-            더보기 ({total - visibleDays.length}개 더 있음)
-          </Link>
-        </div>
-      )}
     </main>
   );
 }
