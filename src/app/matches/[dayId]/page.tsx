@@ -5,8 +5,6 @@ import { getCurrentUser } from "@/lib/session";
 import { avatarSrc } from "@/lib/avatar";
 import { RESULT_LABEL } from "@/lib/matchDisplay";
 import { type TeamPlayer } from "@/components/TeamBadges";
-import { MatchupRow } from "@/components/MatchupRow";
-import { MatchScoreCard } from "@/components/MatchScoreCard";
 import { getTier, type Tier } from "@/lib/tier";
 import { computeDailyMvp } from "@/lib/mvp";
 import type { MatchType, ParticipationStatus } from "@/generated/prisma/client";
@@ -15,6 +13,8 @@ import { AttendanceCarousel } from "./AttendanceCarousel";
 import { AttendanceMemberGrid } from "./AttendanceMemberGrid";
 import { MvpModal } from "./MvpModal";
 import { MatchDayPhotoGallery } from "./MatchDayPhotoGallery";
+import { ScheduledDayMatchList, type ScheduledDayMatchItem } from "./ScheduledDayMatchList";
+import { CompletedDayMatchList, type CompletedDayMatchItem } from "./CompletedDayMatchList";
 import { submitMatchScoreAction } from "./actions";
 import { deleteMatchAction } from "@/app/admin/actions";
 
@@ -196,60 +196,42 @@ export default async function MatchDayPage({
         {scheduled.length === 0 ? (
           <p className="text-sm text-muted-foreground">점수 입력을 기다리는 경기가 없습니다.</p>
         ) : (
-          <ul className="space-y-3">
-            {scheduled.map((m) => {
-              const a1 = playerById.get(m.teamAPlayer1);
-              const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
-              const b1 = playerById.get(m.teamBPlayer1);
-              const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
-              if (!a1 || !b1) return null;
-              const typeLabel = m.type === "SINGLES" ? "단식" : "복식";
-              const submitted = m.teamAScore !== null && m.teamBScore !== null;
+          <ScheduledDayMatchList
+            items={scheduled
+              .map((m): ScheduledDayMatchItem | null => {
+                const a1 = playerById.get(m.teamAPlayer1);
+                const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
+                const b1 = playerById.get(m.teamBPlayer1);
+                const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
+                if (!a1 || !b1) return null;
+                const typeLabel = m.type === "SINGLES" ? "단식" : "복식";
+                const submitted = m.teamAScore !== null && m.teamBScore !== null;
+                const teamA1Tier = tierFor(a1.id, m.type);
+                const teamA2Tier = a2 ? tierFor(a2.id, m.type) : undefined;
+                const teamB1Tier = tierFor(b1.id, m.type);
+                const teamB2Tier = b2 ? tierFor(b2.id, m.type) : undefined;
 
-              if (!user) {
-                return (
-                  <li key={m.id} className="surface-card px-5 py-4">
-                    <p className="mb-2 text-sm text-muted-foreground">
-                      {typeLabel} · 점수 입력 대기 중
-                    </p>
-                    <MatchupRow
-                      type={m.type}
-                      teamA1={a1}
-                      teamA2={a2}
-                      teamB1={b1}
-                      teamB2={b2}
-                      teamA1Tier={tierFor(a1.id, m.type)}
-                      teamA2Tier={a2 ? tierFor(a2.id, m.type) : undefined}
-                      teamB1Tier={tierFor(b1.id, m.type)}
-                      teamB2Tier={b2 ? tierFor(b2.id, m.type) : undefined}
-                    />
-                  </li>
-                );
-              }
-
-              return (
-                <li key={m.id}>
-                  <MatchScoreCard
-                    action={submitMatchScoreAction.bind(null, m.id)}
-                    deleteAction={user?.role === "ADMIN" ? deleteMatchAction.bind(null, m.id) : undefined}
-                    type={m.type}
-                    teamA1={a1}
-                    teamA2={a2}
-                    teamB1={b1}
-                    teamB2={b2}
-                    teamA1Tier={tierFor(a1.id, m.type)}
-                    teamA2Tier={a2 ? tierFor(a2.id, m.type) : undefined}
-                    teamB1Tier={tierFor(b1.id, m.type)}
-                    teamB2Tier={b2 ? tierFor(b2.id, m.type) : undefined}
-                    initialTeamAScore={m.teamAScore}
-                    initialTeamBScore={m.teamBScore}
-                    statusLabel={`${typeLabel} · ${submitted ? "제출됨 · 관리자 승인 대기" : "점수 입력 대기 중"}`}
-                    submitLabel="결과 제출"
-                  />
-                </li>
-              );
-            })}
-          </ul>
+                return {
+                  id: m.id,
+                  type: m.type,
+                  teamA1: a1,
+                  teamA2: a2,
+                  teamB1: b1,
+                  teamB2: b2,
+                  teamA1Tier,
+                  teamA2Tier,
+                  teamB1Tier,
+                  teamB2Tier,
+                  typeLabel,
+                  statusLabel: `${typeLabel} · ${submitted ? "제출됨 · 관리자 승인 대기" : "점수 입력 대기 중"}`,
+                  initialTeamAScore: m.teamAScore,
+                  initialTeamBScore: m.teamBScore,
+                  action: user ? submitMatchScoreAction.bind(null, m.id) : undefined,
+                  deleteAction: user?.role === "ADMIN" ? deleteMatchAction.bind(null, m.id) : undefined,
+                };
+              })
+              .filter((item): item is ScheduledDayMatchItem => item !== null)}
+          />
         )}
       </section>
 
@@ -271,41 +253,35 @@ export default async function MatchDayPage({
         {completed.length === 0 ? (
           <p className="text-sm text-muted-foreground">완료된 경기가 없습니다.</p>
         ) : (
-          <ul className="space-y-3">
-            {completed.map((m) => {
-              const a1 = playerById.get(m.teamAPlayer1);
-              const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
-              const b1 = playerById.get(m.teamBPlayer1);
-              const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
-              if (!a1 || !b1) return null;
-              const eloChangeByPlayer = Object.fromEntries(m.eloHistory.map((h) => [h.userId, h.delta]));
-              return (
-                <li key={m.id} className="surface-card px-5 py-4">
-                  <p className="mb-2 text-sm text-muted-foreground">
-                    {m.type === "SINGLES" ? "단식" : "복식"}
-                  </p>
-                  <MatchupRow
-                    type={m.type}
-                    teamA1={a1}
-                    teamA2={a2}
-                    teamB1={b1}
-                    teamB2={b2}
-                    eloChangeByPlayer={eloChangeByPlayer}
-                    teamA1Tier={tierFor(a1.id, m.type)}
-                    teamA2Tier={a2 ? tierFor(a2.id, m.type) : undefined}
-                    teamB1Tier={tierFor(b1.id, m.type)}
-                    teamB2Tier={b2 ? tierFor(b2.id, m.type) : undefined}
-                    resultLabel={m.result ? RESULT_LABEL[m.result] : undefined}
-                    scoreLabel={
-                      m.teamAScore !== null && m.teamBScore !== null
-                        ? `(${m.teamAScore}:${m.teamBScore})`
-                        : undefined
-                    }
-                  />
-                </li>
-              );
-            })}
-          </ul>
+          <CompletedDayMatchList
+            items={completed
+              .map((m): CompletedDayMatchItem | null => {
+                const a1 = playerById.get(m.teamAPlayer1);
+                const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
+                const b1 = playerById.get(m.teamBPlayer1);
+                const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
+                if (!a1 || !b1) return null;
+                const eloChangeByPlayer = Object.fromEntries(m.eloHistory.map((h) => [h.userId, h.delta]));
+                return {
+                  id: m.id,
+                  type: m.type,
+                  typeLabel: m.type === "SINGLES" ? "단식" : "복식",
+                  teamA1: a1,
+                  teamA2: a2,
+                  teamB1: b1,
+                  teamB2: b2,
+                  teamA1Tier: tierFor(a1.id, m.type),
+                  teamA2Tier: a2 ? tierFor(a2.id, m.type) : undefined,
+                  teamB1Tier: tierFor(b1.id, m.type),
+                  teamB2Tier: b2 ? tierFor(b2.id, m.type) : undefined,
+                  eloChangeByPlayer,
+                  resultLabel: m.result ? RESULT_LABEL[m.result] : undefined,
+                  scoreLabel:
+                    m.teamAScore !== null && m.teamBScore !== null ? `(${m.teamAScore}:${m.teamBScore})` : undefined,
+                };
+              })
+              .filter((item): item is CompletedDayMatchItem => item !== null)}
+          />
         )}
       </section>
     </main>

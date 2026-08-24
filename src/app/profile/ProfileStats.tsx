@@ -5,6 +5,8 @@ import { RESULT_LABEL } from "@/lib/matchDisplay";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { MatchupRow } from "@/components/MatchupRow";
 import { TierBadge } from "@/components/TierBadge";
+import { LoadMoreButton } from "@/components/LoadMoreButton";
+import { useLoadMore } from "@/lib/useLoadMore";
 import { getTier, isPlacement } from "@/lib/tier";
 import type { Match, MatchDay, MatchType } from "@/generated/prisma/client";
 
@@ -46,6 +48,9 @@ export function ProfileStats({
     const type = TAB_TYPE[tab];
     return type ? matches.filter((m) => m.type === type) : matches;
   }, [matches, tab]);
+  // 탭을 바꾸면(resetKey=tab) 최근 5개부터 다시 보여준다 — "더보기"로
+  // 늘려뒀던 개수가 다른 종목 탭에 그대로 남아있지 않게 한다.
+  const { visibleItems: visibleMatches, hasMore, showMore } = useLoadMore(filteredMatches, 5, tab);
 
   const totalWins = (singles?.wins ?? 0) + (doubles?.wins ?? 0);
   const totalLosses = (singles?.losses ?? 0) + (doubles?.losses ?? 0);
@@ -126,10 +131,11 @@ export function ProfileStats({
           {filteredMatches.length === 0 && (
             <p className="text-sm text-muted-foreground">경기 기록이 없습니다.</p>
           )}
-          {filteredMatches.map((m) => (
+          {visibleMatches.map((m) => (
             <MatchHistoryCard key={m.id} match={m} playerById={playerById} />
           ))}
         </ul>
+        <LoadMoreButton hasMore={hasMore} onClick={showMore} />
       </div>
     </>
   );

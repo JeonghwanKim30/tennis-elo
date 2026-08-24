@@ -5,6 +5,7 @@ import { Avatar } from "@/components/Avatar";
 import { avatarSrc } from "@/lib/avatar";
 import type { TeamPlayer } from "@/components/TeamBadges";
 import { SearchForm } from "./SearchForm";
+import { RecentMatchList, type RecentMatchItem } from "./RecentMatchList";
 
 type Outcome = "WIN" | "LOSS" | "DRAW";
 type MatchWithDay = Match & { matchDay: { date: Date } };
@@ -90,6 +91,32 @@ export default async function H2HPage({
     .map(([opponentId, rec]) => ({ opponentId, ...rec, total: rec.wins + rec.losses + rec.draws }))
     .sort((a, b) => b.total - a.total || (nameById.get(a.opponentId) ?? "").localeCompare(nameById.get(b.opponentId) ?? ""));
 
+  // "최근 경기" 목록(RecentMatchList, 클라이언트)에 필요한 표시용 데이터만
+  // 미리 계산해서 넘긴다 — playerId 관점의 승/패/무 판정, 상대 목록 같은
+  // 로직은 서버에서 한 번만 돌리고 클라이언트는 순수하게 자르기/렌더링만 한다.
+  const recentMatches: RecentMatchItem[] = playerId
+    ? matches
+        .map((m): RecentMatchItem | null => {
+          const selfSide = teamOf(m, playerId);
+          if (!selfSide) return null;
+          const outcome = outcomeFor(m, selfSide);
+          const outcomeLabel = outcome === "WIN" ? "승" : outcome === "LOSS" ? "패" : "무";
+          const opponents = opponentsOf(m, selfSide)
+            .map((id) => playerById.get(id))
+            .filter((p): p is TeamPlayer => !!p);
+          return {
+            id: m.id,
+            typeLabel: m.type === "SINGLES" ? "단식" : "복식",
+            dateLabel: m.matchDay.date.toISOString().slice(0, 10),
+            outcomeLabel,
+            scoreLabel:
+              m.teamAScore !== null && m.teamBScore !== null ? ` (${m.teamAScore}:${m.teamBScore})` : "",
+            opponents,
+          };
+        })
+        .filter((m): m is RecentMatchItem => m !== null)
+    : [];
+
   return (
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-12">
       <h1 className="text-2xl font-bold">상대전적</h1>
@@ -139,49 +166,7 @@ export default async function H2HPage({
 
           <section>
             <h2 className="mb-3 text-lg font-semibold">최근 경기</h2>
-            <ul className="space-y-3">
-              {matches.length === 0 && (
-                <p className="text-sm text-muted-foreground">완료된 경기가 없습니다.</p>
-              )}
-              {matches.map((m) => {
-                const selfSide = teamOf(m, playerId);
-                if (!selfSide) return null;
-                const outcome = outcomeFor(m, selfSide);
-                const outcomeLabel =
-                  outcome === "WIN" ? "승" : outcome === "LOSS" ? "패" : "무";
-                const opponents = opponentsOf(m, selfSide)
-                  .map((id) => playerById.get(id))
-                  .filter((p): p is TeamPlayer => !!p);
-                return (
-                  <li key={m.id} className="surface-card px-5 py-4 text-sm">
-                    <p className="mb-2 text-muted-foreground">
-                      {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
-                      {m.matchDay.date.toISOString().slice(0, 10)}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {opponents.map((p) => (
-                          <Link
-                            key={p.id}
-                            href={`/profile/${p.id}`}
-                            className="btn-press flex max-w-[6rem] items-center gap-1"
-                          >
-                            <Avatar src={p.avatarSrc} size="sm" />
-                            <span className="truncate">{p.name}</span>
-                          </Link>
-                        ))}
-                      </div>
-                      <span className="font-medium">
-                        — {outcomeLabel}
-                        {m.teamAScore !== null && m.teamBScore !== null
-                          ? ` (${m.teamAScore}:${m.teamBScore})`
-                          : ""}
-                      </span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+            <RecentMatchList items={recentMatches} />
           </section>
         </div>
       )}

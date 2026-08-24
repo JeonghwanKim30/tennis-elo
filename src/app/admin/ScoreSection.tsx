@@ -2,10 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { avatarSrc } from "@/lib/avatar";
 import { RESULT_LABEL } from "@/lib/matchDisplay";
 import { type TeamPlayer } from "@/components/TeamBadges";
-import { MatchupRow } from "@/components/MatchupRow";
-import { MatchScoreCard } from "@/components/MatchScoreCard";
-import { SquareDeleteButton } from "@/components/SquareDeleteButton";
 import { deleteMatchAction, enterMatchScoreAction } from "./actions";
+import { ScheduledMatchList, type ScheduledMatchItem } from "./ScheduledMatchList";
+import { CompletedMatchList, type CompletedMatchItem } from "./CompletedMatchList";
 
 export async function ScoreSection() {
   // 세 쿼리 모두 독립적이라 병렬로 실행한다 — 예전엔 매치 두 건을 먼저 받아
@@ -37,87 +36,78 @@ export async function ScoreSection() {
     allUsers.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
   );
 
+  // 목록 렌더링(최근 5개 + 더보기)은 클라이언트 컴포넌트(ScheduledMatchList/
+  // CompletedMatchList)가 맡고, 여기서는 표시에 필요한 값만 미리 계산해서
+  // 넘긴다 — bind된 서버 액션은 그대로 클라이언트 컴포넌트에 prop으로 전달 가능하다.
+  const scheduledItems: ScheduledMatchItem[] = scheduledMatches
+    .map((m): ScheduledMatchItem | null => {
+      const a1 = playerById.get(m.teamAPlayer1);
+      const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
+      const b1 = playerById.get(m.teamBPlayer1);
+      const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
+      if (!a1 || !b1) return null;
+      const typeLabel = m.type === "SINGLES" ? "단식" : "복식";
+      const dateLabel = m.matchDay.date.toISOString().slice(0, 10);
+      const submitted = m.teamAScore !== null && m.teamBScore !== null;
+      return {
+        id: m.id,
+        type: m.type,
+        teamA1: a1,
+        teamA2: a2,
+        teamB1: b1,
+        teamB2: b2,
+        initialTeamAScore: m.teamAScore,
+        initialTeamBScore: m.teamBScore,
+        statusLabel: `${typeLabel} · ${dateLabel} · ${submitted ? "제출됨 · 승인 대기" : "미제출"}`,
+        action: enterMatchScoreAction.bind(null, m.id),
+        deleteAction: deleteMatchAction.bind(null, m.id),
+      };
+    })
+    .filter((item): item is ScheduledMatchItem => item !== null);
+
+  const completedItems: CompletedMatchItem[] = completedMatches
+    .map((m): CompletedMatchItem | null => {
+      const a1 = playerById.get(m.teamAPlayer1);
+      const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
+      const b1 = playerById.get(m.teamBPlayer1);
+      const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
+      if (!a1 || !b1) return null;
+      const eloChangeByPlayer = Object.fromEntries(m.eloHistory.map((h) => [h.userId, h.delta]));
+      return {
+        id: m.id,
+        type: m.type,
+        dateTypeLabel: `${m.type === "SINGLES" ? "단식" : "복식"} · ${m.matchDay.date.toISOString().slice(0, 10)}`,
+        teamA1: a1,
+        teamA2: a2,
+        teamB1: b1,
+        teamB2: b2,
+        eloChangeByPlayer,
+        resultLabel: m.result ? RESULT_LABEL[m.result] : undefined,
+        scoreLabel: m.teamAScore !== null && m.teamBScore !== null ? `(${m.teamAScore}:${m.teamBScore})` : undefined,
+        deleteAction: deleteMatchAction.bind(null, m.id),
+      };
+    })
+    .filter((item): item is CompletedMatchItem => item !== null);
+
   return (
     <div className="space-y-10">
       <section>
         <h2 className="mb-3 text-lg font-semibold">
-          예정된 경기 — 점수 입력 ({scheduledMatches.length})
+          예정된 경기 — 점수 입력 ({scheduledItems.length})
         </h2>
-        {scheduledMatches.length === 0 ? (
+        {scheduledItems.length === 0 ? (
           <p className="text-sm text-muted-foreground">점수 입력을 기다리는 경기가 없습니다.</p>
         ) : (
-          <ul className="space-y-3">
-            {scheduledMatches.map((m) => {
-              const a1 = playerById.get(m.teamAPlayer1);
-              const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
-              const b1 = playerById.get(m.teamBPlayer1);
-              const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
-              if (!a1 || !b1) return null;
-              const typeLabel = m.type === "SINGLES" ? "단식" : "복식";
-              const dateLabel = m.matchDay.date.toISOString().slice(0, 10);
-              const submitted = m.teamAScore !== null && m.teamBScore !== null;
-              return (
-                <li key={m.id}>
-                  <MatchScoreCard
-                    action={enterMatchScoreAction.bind(null, m.id)}
-                    deleteAction={deleteMatchAction.bind(null, m.id)}
-                    type={m.type}
-                    teamA1={a1}
-                    teamA2={a2}
-                    teamB1={b1}
-                    teamB2={b2}
-                    initialTeamAScore={m.teamAScore}
-                    initialTeamBScore={m.teamBScore}
-                    statusLabel={`${typeLabel} · ${dateLabel} · ${submitted ? "제출됨 · 승인 대기" : "미제출"}`}
-                    submitLabel="승인"
-                  />
-                </li>
-              );
-            })}
-          </ul>
+          <ScheduledMatchList items={scheduledItems} />
         )}
       </section>
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">완료된 경기</h2>
-        {completedMatches.length === 0 ? (
+        {completedItems.length === 0 ? (
           <p className="text-sm text-muted-foreground">완료된 경기가 없습니다.</p>
         ) : (
-          <ul className="space-y-3">
-            {completedMatches.map((m) => {
-              const a1 = playerById.get(m.teamAPlayer1);
-              const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
-              const b1 = playerById.get(m.teamBPlayer1);
-              const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
-              if (!a1 || !b1) return null;
-              const eloChangeByPlayer = Object.fromEntries(m.eloHistory.map((h) => [h.userId, h.delta]));
-              return (
-                <li key={m.id} className="surface-card space-y-3 px-5 py-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm text-muted-foreground">
-                      {m.type === "SINGLES" ? "단식" : "복식"} ·{" "}
-                      {m.matchDay.date.toISOString().slice(0, 10)}
-                    </p>
-                    <SquareDeleteButton action={deleteMatchAction.bind(null, m.id)} label="경기 삭제" />
-                  </div>
-                  <MatchupRow
-                    type={m.type}
-                    teamA1={a1}
-                    teamA2={a2}
-                    teamB1={b1}
-                    teamB2={b2}
-                    eloChangeByPlayer={eloChangeByPlayer}
-                    resultLabel={m.result ? RESULT_LABEL[m.result] : undefined}
-                    scoreLabel={
-                      m.teamAScore !== null && m.teamBScore !== null
-                        ? `(${m.teamAScore}:${m.teamBScore})`
-                        : undefined
-                    }
-                  />
-                </li>
-              );
-            })}
-          </ul>
+          <CompletedMatchList items={completedItems} />
         )}
       </section>
     </div>
