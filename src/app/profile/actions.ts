@@ -134,7 +134,7 @@ export interface RecapCardData {
   tierColor: string;
   tierTextColor: string;
   isPlacementNow: boolean;
-  /** "2026년 8월" 또는 "전체 시즌". */
+  /** "2026년 8월", "2026년 1월 ~ 2026년 8월", 또는 "전체 시즌". */
   periodLabel: string;
 }
 
@@ -143,32 +143,54 @@ export interface RecapState {
   data?: RecapCardData;
 }
 
+function formatMonthLabel(monthStr: string): string {
+  const [yearStr, monthPart] = monthStr.split("-");
+  return `${yearStr}년 ${Number(monthPart)}월`;
+}
+
 /**
- * 기간(월간/시즌) 리캡 카드용 통계를 계산한다. 순수 집계 로직은
+ * 기간(월 범위/시즌) 리캡 카드용 통계를 계산한다. 순수 집계 로직은
  * lib/recap.ts(computeRecapStats)에 있고, 여기서는 DB 조회 + 그 결과를
  * RecapMatchRecord로 변환 + 이름 조회만 담당한다.
- * @param mode "month"면 monthStr("YYYY-MM")의 1일 00:00:00 ~ 다음 달 1일
- *   직전까지, "season"이면 기간 제한 없이 전체 이력을 집계한다.
+ * @param mode "month"면 startMonthStr("YYYY-MM")의 1일 00:00:00부터
+ *   endMonthStr 말일 23:59:59.999까지, "season"이면 기간 제한 없이 전체
+ *   이력을 집계한다.
  */
-export async function getRecapStatsAction(mode: RecapMode, monthStr?: string): Promise<RecapState> {
+export async function getRecapStatsAction(
+  mode: RecapMode,
+  startMonthStr?: string,
+  endMonthStr?: string
+): Promise<RecapState> {
   const user = await requireUser();
 
   let dateFilter: { gte: Date; lt: Date } | undefined;
   let periodLabel: string;
 
   if (mode === "month") {
-    if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) {
+    if (
+      !startMonthStr ||
+      !endMonthStr ||
+      !/^\d{4}-\d{2}$/.test(startMonthStr) ||
+      !/^\d{4}-\d{2}$/.test(endMonthStr)
+    ) {
       return { error: "월 형식이 올바르지 않습니다." };
     }
-    const start = dateOnly(`${monthStr}-01`);
-    if (Number.isNaN(start.getTime())) {
+    const start = dateOnly(`${startMonthStr}-01`);
+    const endMonthStart = dateOnly(`${endMonthStr}-01`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(endMonthStart.getTime())) {
       return { error: "월 형식이 올바르지 않습니다." };
     }
-    const endExclusive = new Date(start);
+    if (startMonthStr > endMonthStr) {
+      return { error: "종료 월은 시작 월보다 늦어야 합니다." };
+    }
+    // 종료 월의 "다음 달 1일"을 배타적 상한으로 써서 종료 월 전체(말일까지)를 포함한다.
+    const endExclusive = new Date(endMonthStart);
     endExclusive.setUTCMonth(endExclusive.getUTCMonth() + 1);
     dateFilter = { gte: start, lt: endExclusive };
-    const [yearStr, monthPart] = monthStr.split("-");
-    periodLabel = `${yearStr}년 ${Number(monthPart)}월`;
+    periodLabel =
+      startMonthStr === endMonthStr
+        ? formatMonthLabel(startMonthStr)
+        : `${formatMonthLabel(startMonthStr)} ~ ${formatMonthLabel(endMonthStr)}`;
   } else {
     periodLabel = "전체 시즌";
   }
