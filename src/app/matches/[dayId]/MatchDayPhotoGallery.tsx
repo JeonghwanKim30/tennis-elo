@@ -6,10 +6,12 @@ import dynamic from "next/dynamic";
 import { uploadMatchDayPhotoAction, deleteMatchDayPhotoAction } from "./actions";
 import { type LightboxPhoto } from "./PhotoLightbox";
 import { MAX_PHOTOS_PER_DAY } from "./photoConfig";
+import { useIdlePreload } from "@/lib/useIdlePreload";
 
 // 핀치줌/팬 제스처 로직이 있는 무거운 컴포넌트라, 썸네일을 실제로 클릭하기
 // 전까지는 이 페이지의 초기 번들에 포함시키지 않는다(포털로 body에 그리는
-// 모달이라 SSR로 미리 그릴 이유도 없다).
+// 모달이라 SSR로 미리 그릴 이유도 없다). 대신 페이지가 한가해지는 대로
+// useIdlePreload로 미리 당겨받아, 첫 클릭 때 청크 다운로드로 멈추지 않게 한다.
 const PhotoLightbox = dynamic(() => import("./PhotoLightbox").then((m) => m.PhotoLightbox), {
   ssr: false,
 });
@@ -62,6 +64,7 @@ export function MatchDayPhotoGallery({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  useIdlePreload(() => import("./PhotoLightbox"));
 
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);

@@ -10,17 +10,13 @@ import { getTier, isPlacement } from "@/lib/tier";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { ProfileStats } from "../ProfileStats";
 
-type Tab = "all" | "singles" | "doubles";
-
 // 타인의 프로필 조회 전용 페이지 — 공개 정보(사진/이름/자기소개/ELO/전적/티어)만
 // 보여주고, 전화번호나 사진 변경·자기소개 편집·전화번호 변경 같은 편집 UI는
 // 전혀 렌더링하지 않는다(본인 프로필의 /profile 페이지에만 존재).
 export default async function PublicProfilePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ userId: string }>;
-  searchParams: Promise<{ tab?: string }>;
 }) {
   const { userId } = await params;
   const viewer = await getCurrentUser();
@@ -29,11 +25,8 @@ export default async function PublicProfilePage({
     redirect("/profile");
   }
 
-  const { tab: rawTab } = await searchParams;
-  const tab: Tab = rawTab === "singles" || rawTab === "doubles" ? rawTab : "all";
-
-  const typeFilter = tab === "singles" ? "SINGLES" : tab === "doubles" ? "DOUBLES" : undefined;
-
+  // 전체/단식/복식 탭은 ProfileStats(클라이언트)가 matches 배열을 그대로
+  // 받아 내부 상태로 즉시 필터링하므로, 여기서는 종목 구분 없이 조회한다.
   // 아래 4개 쿼리는 서로 결과를 참조하지 않고 전부 userId(또는 아무 조건
   // 없음)만 있으면 되므로 병렬로 보낸다 — 순서대로 기다리면 원격 DB 왕복이
   // 4번 쌓여 그대로 지연으로 이어진다. allUsers를 매치 등장 선수로 필터링
@@ -59,7 +52,6 @@ export default async function PublicProfilePage({
     prisma.match.findMany({
       where: {
         status: "APPROVED",
-        ...(typeFilter ? { type: typeFilter } : {}),
         OR: [
           { teamAPlayer1: userId },
           { teamAPlayer2: userId },
@@ -120,14 +112,7 @@ export default async function PublicProfilePage({
         </p>
       </div>
 
-      <ProfileStats
-        basePath={`/profile/${userId}`}
-        tab={tab}
-        singles={singles}
-        doubles={doubles}
-        matches={matches}
-        playerById={playerById}
-      />
+      <ProfileStats singles={singles} doubles={doubles} matches={matches} playerById={playerById} />
     </main>
   );
 }

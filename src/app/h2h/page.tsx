@@ -36,11 +36,31 @@ export default async function H2HPage({
 }) {
   const { player: playerId } = await searchParams;
 
-  const players = await prisma.user.findMany({
-    where: { status: "ACTIVE" },
-    select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
-    orderBy: { name: "asc" },
-  });
+  // players 목록과 matches 조회는 서로 결과를 참조하지 않는다(matches는
+  // playerId만 있으면 되고, players는 검색창용 전체 목록이라 playerId와
+  // 무관) — Promise.all로 동시에 보내 원격 DB 왕복을 1번으로 줄인다.
+  const [players, matches] = await Promise.all([
+    prisma.user.findMany({
+      where: { status: "ACTIVE" },
+      select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
+      orderBy: { name: "asc" },
+    }),
+    playerId
+      ? prisma.match.findMany({
+          where: {
+            status: "APPROVED",
+            OR: [
+              { teamAPlayer1: playerId },
+              { teamAPlayer2: playerId },
+              { teamBPlayer1: playerId },
+              { teamBPlayer2: playerId },
+            ],
+          },
+          include: { matchDay: true },
+          orderBy: { approvalSeq: "desc" },
+        })
+      : Promise.resolve<MatchWithDay[]>([]),
+  ]);
   // 검색창(클라이언트 컴포넌트)에는 이름 검색에 필요한 최소 정보만 넘긴다.
   // profileImage(Bytes)는 서버-클라이언트 경계를 못 넘어가므로 여기서 걸러낸다.
   const searchablePlayers = players.map((p) => ({ id: p.id, name: p.name }));
@@ -49,24 +69,9 @@ export default async function H2HPage({
     players.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
   );
 
-  let matches: MatchWithDay[] = [];
   const totalsByOpponent = new Map<string, { wins: number; losses: number; draws: number }>();
 
   if (playerId) {
-    matches = await prisma.match.findMany({
-      where: {
-        status: "APPROVED",
-        OR: [
-          { teamAPlayer1: playerId },
-          { teamAPlayer2: playerId },
-          { teamBPlayer1: playerId },
-          { teamBPlayer2: playerId },
-        ],
-      },
-      include: { matchDay: true },
-      orderBy: { approvalSeq: "desc" },
-    });
-
     for (const m of matches) {
       const selfSide = teamOf(m, playerId);
       if (!selfSide) continue;

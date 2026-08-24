@@ -12,19 +12,12 @@ import { PhoneEditor } from "./PhoneEditor";
 import { ProfileStats } from "./ProfileStats";
 import { TierChangeBanner } from "./TierChangeBanner";
 
-type Tab = "all" | "singles" | "doubles";
-
-export default async function ProfilePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tab?: string }>;
-}) {
+export default async function ProfilePage() {
   const authUser = await requireUser();
-  const { tab: rawTab } = await searchParams;
-  const tab: Tab = rawTab === "singles" || rawTab === "doubles" ? rawTab : "all";
 
-  const typeFilter = tab === "singles" ? "SINGLES" : tab === "doubles" ? "DOUBLES" : undefined;
-
+  // 전체/단식/복식 탭은 ProfileStats(클라이언트)가 matches 배열을 그대로
+  // 받아 내부 상태로 즉시 필터링하므로, 여기서는 종목 구분 없이 최근 경기를
+  // 한 번만 조회하면 된다(탭 전환 때마다 다시 조회할 필요가 없다).
   // getCurrentUser()(=requireUser)는 라우팅마다 NavBar가 부르는 가벼운 인증용
   // select라 name/bio/profileImage 같은 프로필 전용 필드가 없어 이 페이지에서
   // 따로 조회해야 하는데, 아래 4개 쿼리는 서로 결과값을 참조하지 않고 전부
@@ -54,7 +47,6 @@ export default async function ProfilePage({
     prisma.match.findMany({
       where: {
         status: "APPROVED",
-        ...(typeFilter ? { type: typeFilter } : {}),
         OR: [
           { teamAPlayer1: authUser.id },
           { teamAPlayer2: authUser.id },
@@ -134,14 +126,7 @@ export default async function ProfilePage({
 
       <BioEditor initialBio={user.bio ?? ""} />
 
-      <ProfileStats
-        basePath="/profile"
-        tab={tab}
-        singles={singles}
-        doubles={doubles}
-        matches={matches}
-        playerById={playerById}
-      />
+      <ProfileStats singles={singles} doubles={doubles} matches={matches} playerById={playerById} />
     </main>
   );
 }
