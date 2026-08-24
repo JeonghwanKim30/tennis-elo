@@ -122,9 +122,11 @@ export async function markTierSeenAction(singlesTierKey: string, doublesTierKey:
   });
 }
 
+export type RecapMode = "month" | "season";
+
 export interface RecapCardData {
   stats: RecapStats;
-  /** mostFrequentPartnerId/bestOpponent/worstOpponent가 가리키는 유저 id -> 이름. */
+  /** bestPartner/bestOpponent/worstOpponent가 가리키는 유저 id -> 이름. */
   nameById: Record<string, string>;
   userName: string;
   avatarSrc: string;
@@ -132,8 +134,8 @@ export interface RecapCardData {
   tierColor: string;
   tierTextColor: string;
   isPlacementNow: boolean;
-  periodStart: string;
-  periodEnd: string;
+  /** "2026년 8월" 또는 "전체 시즌". */
+  periodLabel: string;
 }
 
 export interface RecapState {
@@ -141,35 +143,41 @@ export interface RecapState {
   data?: RecapCardData;
 }
 
-const RECAP_MAX_RANGE_DAYS = 366;
-
 /**
  * 기간(월간/시즌) 리캡 카드용 통계를 계산한다. 순수 집계 로직은
  * lib/recap.ts(computeRecapStats)에 있고, 여기서는 DB 조회 + 그 결과를
  * RecapMatchRecord로 변환 + 이름 조회만 담당한다.
+ * @param mode "month"면 monthStr("YYYY-MM")의 1일 00:00:00 ~ 다음 달 1일
+ *   직전까지, "season"이면 기간 제한 없이 전체 이력을 집계한다.
  */
-export async function getRecapStatsAction(startDateStr: string, endDateStr: string): Promise<RecapState> {
+export async function getRecapStatsAction(mode: RecapMode, monthStr?: string): Promise<RecapState> {
   const user = await requireUser();
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDateStr) || !/^\d{4}-\d{2}-\d{2}$/.test(endDateStr)) {
-    return { error: "날짜 형식이 올바르지 않습니다." };
-  }
-  const start = dateOnly(startDateStr);
-  // 종료일은 "그날 전체"를 포함해야 하므로, 다음날 자정을 배타적 상한으로 쓴다.
-  const endExclusive = new Date(dateOnly(endDateStr).getTime() + 24 * 60 * 60 * 1000);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(endExclusive.getTime()) || start >= endExclusive) {
-    return { error: "종료일은 시작일보다 늦어야 합니다." };
-  }
-  const rangeDays = (endExclusive.getTime() - start.getTime()) / (24 * 60 * 60 * 1000);
-  if (rangeDays > RECAP_MAX_RANGE_DAYS) {
-    return { error: `기간은 최대 ${RECAP_MAX_RANGE_DAYS}일까지 선택할 수 있습니다.` };
+  let dateFilter: { gte: Date; lt: Date } | undefined;
+  let periodLabel: string;
+
+  if (mode === "month") {
+    if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) {
+      return { error: "월 형식이 올바르지 않습니다." };
+    }
+    const start = dateOnly(`${monthStr}-01`);
+    if (Number.isNaN(start.getTime())) {
+      return { error: "월 형식이 올바르지 않습니다." };
+    }
+    const endExclusive = new Date(start);
+    endExclusive.setUTCMonth(endExclusive.getUTCMonth() + 1);
+    dateFilter = { gte: start, lt: endExclusive };
+    const [yearStr, monthPart] = monthStr.split("-");
+    periodLabel = `${yearStr}년 ${Number(monthPart)}월`;
+  } else {
+    periodLabel = "전체 시즌";
   }
 
   const [matches, ratings, profileUser] = await Promise.all([
     prisma.match.findMany({
       where: {
         status: "APPROVED",
-        matchDay: { date: { gte: start, lt: endExclusive } },
+        ...(dateFilter ? { matchDay: { date: dateFilter } } : {}),
         OR: [
           { teamAPlayer1: user.id },
           { teamAPlayer2: user.id },
@@ -223,7 +231,7 @@ export async function getRecapStatsAction(startDateStr: string, endDateStr: stri
 
   const stats = computeRecapStats(records);
 
-  const idsToResolve = [stats.mostFrequentPartnerId, stats.bestOpponent?.playerId, stats.worstOpponent?.playerId].filter(
+  const idsToResolve = [stats.bestPartner?.playerId, stats.bestOpponent?.playerId, stats.worstOpponent?.playerId].filter(
     (id): id is string => !!id
   );
   const players = idsToResolve.length
@@ -250,8 +258,7 @@ export async function getRecapStatsAction(startDateStr: string, endDateStr: stri
       tierColor: placementNow ? "var(--muted)" : tier.color,
       tierTextColor: placementNow ? "var(--muted-foreground)" : tier.textColor,
       isPlacementNow: placementNow,
-      periodStart: startDateStr,
-      periodEnd: endDateStr,
+      periodLabel,
     },
   };
 }

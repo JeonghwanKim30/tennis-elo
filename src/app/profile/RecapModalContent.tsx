@@ -4,13 +4,12 @@ import { useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { toBlob } from "html-to-image";
 import { kstDateString } from "@/lib/date";
-import { getRecapStatsAction, type RecapCardData } from "./actions";
+import { CloseIcon } from "@/components/icons";
+import { getRecapStatsAction, type RecapCardData, type RecapMode } from "./actions";
 import { RecapCard } from "./RecapCard";
 
-function oneMonthAgo(): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() - 1);
-  return kstDateString(d);
+function currentMonth(): string {
+  return kstDateString().slice(0, 7); // "YYYY-MM-DD" -> "YYYY-MM"
 }
 
 function isIOS(): boolean {
@@ -18,8 +17,8 @@ function isIOS(): boolean {
 }
 
 export function RecapModalContent({ onClose }: { onClose: () => void }) {
-  const [startDate, setStartDate] = useState(oneMonthAgo);
-  const [endDate, setEndDate] = useState(kstDateString);
+  const [mode, setMode] = useState<RecapMode>("month");
+  const [month, setMonth] = useState(currentMonth);
   const [data, setData] = useState<RecapCardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -31,7 +30,7 @@ export function RecapModalContent({ onClose }: { onClose: () => void }) {
     setError(null);
     setDownloadError(null);
     startTransition(async () => {
-      const result = await getRecapStatsAction(startDate, endDate);
+      const result = await getRecapStatsAction(mode, mode === "month" ? month : undefined);
       if (result.error) {
         setError(result.error);
         setData(null);
@@ -65,7 +64,7 @@ export function RecapModalContent({ onClose }: { onClose: () => void }) {
       const blob = await Promise.race([capture, timeout]);
       if (!blob) throw new Error("이미지를 생성하지 못했습니다.");
       const url = URL.createObjectURL(blob);
-      const filename = `teddib-recap_${data.periodStart}_${data.periodEnd}.png`;
+      const filename = `teddib-recap_${data.periodLabel.replace(/\s/g, "")}.png`;
       if (isIOS()) {
         // iOS Safari는 <a download>를 무시하는 경우가 많아, 새 탭에서 열어
         // "길게 눌러 사진에 저장"으로 저장할 수 있게 한다.
@@ -93,7 +92,7 @@ export function RecapModalContent({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="surface-card w-full max-w-sm space-y-4 p-5"
+        className="surface-card w-full max-w-md space-y-4 p-5"
         role="dialog"
         aria-modal="true"
         aria-labelledby="recap-modal-title"
@@ -107,35 +106,29 @@ export function RecapModalContent({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="btn-press touch-target flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+            className="btn-press touch-target flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-muted hover:text-gray-600"
           >
-            ×
+            <CloseIcon className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="flex-1 text-xs text-muted-foreground">
-            시작일
-            <input
-              type="date"
-              value={startDate}
-              max={endDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="mt-1 w-full appearance-none rounded-xl border border-border px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="flex-1 text-xs text-muted-foreground">
-            종료일
-            <input
-              type="date"
-              value={endDate}
-              min={startDate}
-              max={kstDateString()}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="mt-1 w-full appearance-none rounded-xl border border-border px-3 py-2 text-sm"
-            />
-          </label>
+        <div className="flex gap-2">
+          <ModeButton mode="month" current={mode} onSelect={setMode} label="월별" />
+          <ModeButton mode="season" current={mode} onSelect={setMode} label="전체 시즌" />
         </div>
+
+        {mode === "month" && (
+          <label className="block text-xs text-muted-foreground">
+            기간 선택
+            <input
+              type="month"
+              value={month}
+              max={currentMonth()}
+              onChange={(e) => setMonth(e.target.value)}
+              className="mt-1 w-full appearance-none rounded-xl border border-border px-3 py-2 text-sm"
+            />
+          </label>
+        )}
 
         <button
           type="button"
@@ -167,5 +160,30 @@ export function RecapModalContent({ onClose }: { onClose: () => void }) {
       </div>
     </div>,
     document.body
+  );
+}
+
+function ModeButton({
+  mode,
+  current,
+  onSelect,
+  label,
+}: {
+  mode: RecapMode;
+  current: RecapMode;
+  onSelect: (mode: RecapMode) => void;
+  label: string;
+}) {
+  const isActive = mode === current;
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(mode)}
+      className={`tab-pill btn-press touch-target flex-1 rounded-full py-2 text-sm font-medium ${
+        isActive ? "bg-primary text-white shadow-sm shadow-primary/30" : "bg-muted text-foreground/70"
+      }`}
+    >
+      {label}
+    </button>
   );
 }

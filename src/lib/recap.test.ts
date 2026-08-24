@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   computeLongestWinStreak,
-  computeMostFrequentPartner,
   computeOpponentRecords,
-  computePartnerRecord,
+  computePartnerRecords,
   computeRecapStats,
   type RecapMatchRecord,
 } from "./recap";
@@ -44,22 +43,7 @@ describe("computeLongestWinStreak", () => {
   });
 });
 
-describe("computeMostFrequentPartner", () => {
-  it("returns null when there are no doubles matches", () => {
-    expect(computeMostFrequentPartner([m({ outcome: "WIN", teammateId: null })])).toBeNull();
-  });
-
-  it("picks the partner with the most shared matches", () => {
-    const matches = [
-      m({ outcome: "WIN", teammateId: "a" }),
-      m({ outcome: "LOSS", teammateId: "b" }),
-      m({ outcome: "WIN", teammateId: "a" }),
-    ];
-    expect(computeMostFrequentPartner(matches)).toEqual({ id: "a", count: 2 });
-  });
-});
-
-describe("computeOpponentRecords / computePartnerRecord", () => {
+describe("computeOpponentRecords / computePartnerRecords", () => {
   it("tallies wins/losses/draws per opponent with a rounded win rate", () => {
     const matches = [
       m({ outcome: "WIN", opponentIds: ["opp1"] }),
@@ -77,20 +61,15 @@ describe("computeOpponentRecords / computePartnerRecord", () => {
     });
   });
 
-  it("computePartnerRecord only counts matches actually played with that partner", () => {
+  it("computePartnerRecords only counts matches actually played with each partner", () => {
     const matches = [
       m({ outcome: "WIN", teammateId: "a" }),
       m({ outcome: "LOSS", teammateId: "b" }),
       m({ outcome: "WIN", teammateId: "a" }),
     ];
-    expect(computePartnerRecord(matches, "a")).toEqual({
-      playerId: "a",
-      wins: 2,
-      losses: 0,
-      draws: 0,
-      total: 2,
-      winRate: 100,
-    });
+    const records = computePartnerRecords(matches);
+    expect(records.get("a")).toEqual({ playerId: "a", wins: 2, losses: 0, draws: 0, total: 2, winRate: 100 });
+    expect(records.get("b")).toEqual({ playerId: "b", wins: 0, losses: 1, draws: 0, total: 1, winRate: 0 });
   });
 });
 
@@ -126,7 +105,7 @@ describe("computeRecapStats", () => {
     expect(computeRecapStats(matches).title.key).toBe("WIN_STREAK_MASTER");
   });
 
-  it("awards BEST_COMBO when a frequent doubles partner has a high win rate together, without a long streak", () => {
+  it("awards BEST_COMBO when the best-win-rate doubles partner qualifies, without a long streak", () => {
     const matches = [
       m({ outcome: "WIN", type: "DOUBLES", teammateId: "buddy" }),
       m({ outcome: "LOSS", type: "SINGLES", opponentIds: ["someone"] }),
@@ -134,8 +113,20 @@ describe("computeRecapStats", () => {
     ];
     const stats = computeRecapStats(matches);
     expect(stats.title.key).toBe("BEST_COMBO");
-    expect(stats.mostFrequentPartnerId).toBe("buddy");
-    expect(stats.partnerRecord?.winRate).toBe(100);
+    expect(stats.bestPartner?.playerId).toBe("buddy");
+    expect(stats.bestPartner?.winRate).toBe(100);
+  });
+
+  it("picks the partner by win rate, not by how often they played together", () => {
+    const matches = [
+      // frequent(3경기, 33%)보다 occasional(2경기, 100%)의 승률이 더 높다.
+      m({ outcome: "WIN", type: "DOUBLES", teammateId: "frequent" }),
+      m({ outcome: "LOSS", type: "DOUBLES", teammateId: "frequent" }),
+      m({ outcome: "LOSS", type: "DOUBLES", teammateId: "frequent" }),
+      m({ outcome: "WIN", type: "DOUBLES", teammateId: "occasional" }),
+      m({ outcome: "WIN", type: "DOUBLES", teammateId: "occasional" }),
+    ];
+    expect(computeRecapStats(matches).bestPartner?.playerId).toBe("occasional");
   });
 
   it("awards BLAZING_SINGLES for a strong singles-only record with no streak or combo", () => {
@@ -153,7 +144,7 @@ describe("computeRecapStats", () => {
     expect(computeRecapStats(matches).title.key).toBe("STEADY_PLAYER");
   });
 
-  it("only reports a best/worst opponent once a minimum match count is reached (avoids 1-match noise)", () => {
+  it("only reports a best/worst opponent (and partner) once a minimum match count is reached", () => {
     const matches = [
       m({ outcome: "WIN", opponentIds: ["onceOnly"] }),
       m({ outcome: "WIN", opponentIds: ["rival"] }),
@@ -164,5 +155,6 @@ describe("computeRecapStats", () => {
     expect(stats.bestOpponent?.playerId).toBe("rival");
     expect(stats.worstOpponent?.playerId).toBe("rival");
     expect(stats.worstOpponent?.winRate).toBe(33.3);
+    expect(stats.bestPartner).toBeNull();
   });
 });
