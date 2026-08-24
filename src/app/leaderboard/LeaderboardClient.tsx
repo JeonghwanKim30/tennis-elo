@@ -4,7 +4,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { TierBadge, PlacementBadge } from "@/components/TierBadge";
-import { avatarSrc, type AvatarUser } from "@/lib/avatar";
+import type { Gender } from "@/generated/prisma/client";
 import { getTier, isPlacement, compareForRanking } from "@/lib/tier";
 
 type GenderFilter = "ALL" | "FEMALE" | "MALE";
@@ -26,7 +26,9 @@ export interface LeaderboardRow {
   wins: number;
   losses: number;
   draws: number;
-  user: AvatarUser & { name: string };
+  // profileImage(Bytes)는 서버 컴포넌트 경계를 못 넘어오므로, 서버에서 이미
+  // avatarSrc 문자열로 변환해서 내려준다(leaderboard/page.tsx 참고).
+  user: { name: string; gender: Gender; avatarSrc: string };
 }
 
 // 단식/복식 필터는 서버에서 두 종목 데이터를 한 번에 미리 받아두고, 성별
@@ -135,7 +137,7 @@ const LeaderboardRowItem = memo(function LeaderboardRowItem({ row, rank }: { row
         {placement ? "-" : rank + 1}
       </span>
       <Link href={`/profile/${row.userId}`} className="btn-press flex min-w-0 flex-1 items-center gap-2">
-        <Avatar src={avatarSrc(row.user)} size="sm" />
+        <Avatar src={row.user.avatarSrc} size="sm" />
         <span className="min-w-0 truncate font-medium">{row.user.name}</span>
         {placement ? <PlacementBadge size="sm" /> : <TierBadge tier={getTier(row.rating)} size="sm" />}
       </Link>

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { avatarSrc } from "@/lib/avatar";
 import { LeaderboardClient } from "./LeaderboardClient";
 
 const userSelect = { name: true, gender: true, profileImage: true, profileImageType: true } as const;
@@ -23,9 +24,20 @@ export default async function LeaderboardPage() {
     }),
   ]);
 
+  // profileImage(Bytes → Uint8Array)는 서버 → 클라이언트 컴포넌트 경계를 못
+  // 넘어간다(RSC 직렬화 과정에서 "ArrayBuffer is not detachable and could
+  // not be cloned" 빌드 에러로 이어진다 — 작은 버퍼는 내부적으로 공유
+  // ArrayBuffer 풀을 쓰는 경우가 있어 detach가 안 될 수 있다). 다른
+  // 클라이언트 컴포넌트들과 동일하게, 문자열 avatarSrc로 미리 변환해서
+  // 넘긴다(lib/avatar.ts).
+  const toRow = (r: (typeof singlesRows)[number] | (typeof doublesRows)[number]) => ({
+    ...r,
+    user: { name: r.user.name, gender: r.user.gender, avatarSrc: avatarSrc(r.user) },
+  });
+
   return (
     <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-      <LeaderboardClient singlesRows={singlesRows} doublesRows={doublesRows} />
+      <LeaderboardClient singlesRows={singlesRows.map(toRow)} doublesRows={doublesRows.map(toRow)} />
     </main>
   );
 }
