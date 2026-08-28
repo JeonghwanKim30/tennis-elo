@@ -2,9 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
+import { requireUser, requireAdmin } from "@/lib/session";
 import { matchSubmitSchema, matchScoreSchema } from "@/lib/validation";
 import { MAX_PHOTOS_PER_DAY } from "./photoConfig";
+import { avatarSrc } from "@/lib/avatar";
+import { getTier, type Tier } from "@/lib/tier";
+import { INITIAL_RATING } from "@/lib/elo";
+import { generateDoublesSchedule } from "@/lib/doublesScheduler";
+import type { TeamPlayer } from "@/components/TeamBadges";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 // 시스템 전체 사진 총량 상한(DB 용량 부하 관리) — 초과분은 새 사진을 올릴 때
@@ -189,4 +194,135 @@ export async function submitMatchScoreAction(
   revalidatePath("/matches");
   revalidatePath("/admin");
   return { success: true };
+}
+
+export interface ProposedMatch {
+  teamA1: TeamPlayer;
+  teamA2: TeamPlayer;
+  teamB1: TeamPlayer;
+  teamB2: TeamPlayer;
+  teamA1Tier?: Tier;
+  teamA2Tier?: Tier;
+  teamB1Tier?: Tier;
+  teamB2Tier?: Tier;
+  eloDiff: number;
+}
+
+export interface PreviewScheduleState {
+  error?: string;
+  matches?: ProposedMatch[];
+}
+
+// 실제로 DB에 아무것도 쓰지 않고, ELO 기반 복식 대진표(N경기)를 계산만 해서
+// 돌려준다 — 관리자가 검토하고 최종 승인해야만(commitDoublesScheduleAction)
+// 실제 경기로 등록된다. 관리자 전용 기능이라 requireAdmin으로 막는다.
+export async function previewDoublesScheduleAction(
+  dayId: string,
+  participantIds: string[],
+  matchCount: number
+): Promise<PreviewScheduleState> {
+  await requireAdmin();
+
+  const uniqueIds = Array.from(new Set(participantIds));
+  if (uniqueIds.length < 4) {
+    return { error: "참가자를 4명 이상 선택해주세요." };
+  }
+  if (!Number.isInteger(matchCount) || matchCount < 1) {
+    return { error: "생성할 경기 수를 올바르게 입력해주세요." };
+  }
+
+  // 클라이언트가 보낸 인원 목록을 그대로 믿지 않고, 실제로 그날 "참여"로
+  // 표시된 회원인지 다시 확인한다.
+  const attending = await prisma.matchDayParticipant.findMany({
+    where: { matchDayId: dayId, status: "ATTENDING", userId: { in: uniqueIds } },
+    select: { userId: true },
+  });
+  const attendingIds = new Set(attending.map((p) => p.userId));
+  if (!uniqueIds.every((id) => attendingIds.has(id))) {
+    return { error: "참여를 선택한 회원만 대상으로 선택할 수 있습니다." };
+  }
+
+  const [users, ratings] = await Promise.all([
+    prisma.user.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
+    }),
+    prisma.eloRating.findMany({ where: { userId: { in: uniqueIds }, type: "DOUBLES" } }),
+  ]);
+
+  const ratingByUser = new Map(ratings.map((r) => [r.userId, r.rating]));
+  const teamPlayerById = new Map<string, TeamPlayer>(
+    users.map((u) => [u.id, { id: u.id, name: u.name, avatarSrc: avatarSrc(u) }])
+  );
+  const tierById = new Map<string, Tier>(
+    users.map((u) => [u.id, getTier(ratingByUser.get(u.id) ?? INITIAL_RATING)])
+  );
+
+  let schedule;
+  try {
+    schedule = generateDoublesSchedule(
+      users.map((u) => ({ id: u.id, elo: ratingByUser.get(u.id) ?? INITIAL_RATING })),
+      matchCount
+    );
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "대진표 생성에 실패했습니다." };
+  }
+
+  const matches: ProposedMatch[] = schedule.map((m) => ({
+    teamA1: teamPlayerById.get(m.teamA[0])!,
+    teamA2: teamPlayerById.get(m.teamA[1])!,
+    teamB1: teamPlayerById.get(m.teamB[0])!,
+    teamB2: teamPlayerById.get(m.teamB[1])!,
+    teamA1Tier: tierById.get(m.teamA[0]),
+    teamA2Tier: tierById.get(m.teamA[1]),
+    teamB1Tier: tierById.get(m.teamB[0]),
+    teamB2Tier: tierById.get(m.teamB[1]),
+    eloDiff: m.eloDiff,
+  }));
+
+  return { matches };
+}
+
+export interface CommitScheduleState {
+  error?: string;
+  count?: number;
+}
+
+// 검토가 끝난 대진표를 실제 예정된 경기(PENDING)로 일괄 등록한다. 이후
+// 점수 입력/관리자 승인은 기존 경기와 완전히 동일한 흐름을 그대로 탄다.
+export async function commitDoublesScheduleAction(
+  dayId: string,
+  matches: { teamA1Id: string; teamA2Id: string; teamB1Id: string; teamB2Id: string }[]
+): Promise<CommitScheduleState> {
+  const admin = await requireAdmin();
+
+  if (matches.length === 0) {
+    return { error: "등록할 경기가 없습니다." };
+  }
+
+  const allIds = Array.from(new Set(matches.flatMap((m) => [m.teamA1Id, m.teamA2Id, m.teamB1Id, m.teamB2Id])));
+  const attending = await prisma.matchDayParticipant.findMany({
+    where: { matchDayId: dayId, status: "ATTENDING", userId: { in: allIds } },
+    select: { userId: true },
+  });
+  const attendingIds = new Set(attending.map((p) => p.userId));
+  if (!allIds.every((id) => attendingIds.has(id))) {
+    return { error: "참여 상태가 바뀐 회원이 있습니다 — 새로고침 후 다시 시도해주세요." };
+  }
+
+  await prisma.match.createMany({
+    data: matches.map((m) => ({
+      matchDayId: dayId,
+      type: "DOUBLES" as const,
+      teamAPlayer1: m.teamA1Id,
+      teamAPlayer2: m.teamA2Id,
+      teamBPlayer1: m.teamB1Id,
+      teamBPlayer2: m.teamB2Id,
+      submittedBy: admin.id,
+    })),
+  });
+
+  revalidatePath(`/matches/${dayId}`);
+  revalidatePath("/matches");
+  return { count: matches.length };
 }

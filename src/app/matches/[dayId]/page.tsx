@@ -9,6 +9,7 @@ import { getTier, type Tier } from "@/lib/tier";
 import { computeDailyMvp } from "@/lib/mvp";
 import type { MatchType, ParticipationStatus } from "@/generated/prisma/client";
 import { MatchComposerPanel } from "./MatchComposerPanel";
+import { AutoScheduleGenerator } from "./AutoScheduleGenerator";
 import { AttendanceCarousel } from "./AttendanceCarousel";
 import { AttendanceMemberGrid } from "./AttendanceMemberGrid";
 import { MvpModal } from "./MvpModal";
@@ -188,6 +189,8 @@ export default async function MatchDayPage({
           />
         )}
       </section>
+
+      {user?.role === "ADMIN" && <AutoScheduleGenerator dayId={day.id} participants={attendingMembers} />}
 
       {user && <MatchComposerPanel dayId={day.id} participants={attendingMembers} />}
 
