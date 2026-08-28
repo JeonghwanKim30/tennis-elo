@@ -2,9 +2,10 @@ import sharp from "sharp";
 import { writeFile } from "node:fs/promises";
 
 // 브랜드 마크(TeddiMark, src/components/TeddiMark.tsx)와 같은 모양의 테니스공에
-// 귀여운 눈/미소를 더한 마스코트 + "TEDDI.B" 워드마크를 흰 배경 위에 그린 뒤,
-// 홈 화면/파비콘용 여러 크기로 래스터화한다. 텍스트는 시스템 기본 sans-serif로
-// 그려서(웹폰트 의존 없이) 어떤 환경에서 생성하더라도 항상 렌더링되게 한다.
+// 귀여운 눈/미소를 더한 마스코트 + "TEDDI.B" 워드마크를 짙은 그린 배경 위에
+// 그린 뒤, 홈 화면/파비콘용 여러 크기로 래스터화한다. 배경을 불투명하게 채우는
+// 이유는 mascotSvg() 안 주석 참고. 텍스트는 시스템 기본 sans-serif로 그려서
+// (웹폰트 의존 없이) 어떤 환경에서 생성하더라도 항상 렌더링되게 한다.
 const PRIMARY = "#2fbf71";
 const DARK = "#1f3b30";
 
@@ -16,6 +17,11 @@ const DARK = "#1f3b30";
 function mascotSvg({ size, withText }) {
   const ballCenter = withText ? { x: 50, y: 38 } : { x: 50, y: 50 };
   const ballRadius = withText ? 26 : 42;
+  // 캔버스를 투명하게 두면 iOS/Android가 홈 화면 아이콘의 빈 곳을 자체적으로
+  // 흰색으로 채워버려("흰 테두리") 브랜드와 무관한 흰 사각형이 도로 나타난다.
+  // 그래서 배경을 짙은 그린(DARK)으로 완전히 불투명하게 채워 OS의 흰색
+  // 폴백이 끼어들 여지 자체를 없앤다.
+  const bg = `<rect x="0" y="0" width="100" height="100" fill="${DARK}" />`;
   // 원본 마크(TeddiMark)는 64x64 그리드에서 반지름 30짜리 원으로 그려져 있다 —
   // 그 비율을 유지한 채 원하는 반지름에 맞춰 통째로 확대/이동한다.
   const scale = ballRadius / 30;
@@ -36,6 +42,7 @@ function mascotSvg({ size, withText }) {
     : "";
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100">
+    ${bg}
     <g transform="translate(${tx} ${ty}) scale(${scale})">
       <circle cx="32" cy="32" r="30" fill="${PRIMARY}" />
       <path
