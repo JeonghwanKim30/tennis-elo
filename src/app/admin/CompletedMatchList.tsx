@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { MatchupRow } from "@/components/MatchupRow";
 import { SquareDeleteButton } from "@/components/SquareDeleteButton";
 import { LoadMoreButton } from "@/components/LoadMoreButton";
@@ -32,25 +33,34 @@ export function CompletedMatchList({ items }: { items: CompletedMatchItem[] }) {
     <>
       <ul className="space-y-3">
         {visibleItems.map((m) => (
-          <li key={m.id} className="surface-card space-y-3 px-5 py-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm text-muted-foreground">{m.dateTypeLabel}</p>
-              <SquareDeleteButton action={m.deleteAction} label="경기 삭제" />
-            </div>
-            <MatchupRow
-              type={m.type}
-              teamA1={m.teamA1}
-              teamA2={m.teamA2}
-              teamB1={m.teamB1}
-              teamB2={m.teamB2}
-              eloChangeByPlayer={m.eloChangeByPlayer}
-              resultLabel={m.resultLabel}
-              scoreLabel={m.scoreLabel}
-            />
-          </li>
+          <CompletedMatchRow key={m.id} item={m} />
         ))}
       </ul>
       <LoadMoreButton hasMore={hasMore} onClick={showMore} />
     </>
   );
 }
+
+// "더보기"로 visibleCount만 늘어날 때 이미 그려둔 경기 카드가 다시 렌더링되지
+// 않도록 행을 memo로 분리한다(item 객체 참조는 서버에서 내려온 그대로라
+// 더보기 클릭 사이에 유지된다).
+const CompletedMatchRow = memo(function CompletedMatchRow({ item: m }: { item: CompletedMatchItem }) {
+  return (
+    <li className="surface-card space-y-3 px-5 py-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">{m.dateTypeLabel}</p>
+        <SquareDeleteButton action={m.deleteAction} label="경기 삭제" />
+      </div>
+      <MatchupRow
+        type={m.type}
+        teamA1={m.teamA1}
+        teamA2={m.teamA2}
+        teamB1={m.teamB1}
+        teamB2={m.teamB2}
+        eloChangeByPlayer={m.eloChangeByPlayer}
+        resultLabel={m.resultLabel}
+        scoreLabel={m.scoreLabel}
+      />
+    </li>
+  );
+});

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { MatchScoreCard } from "@/components/MatchScoreCard";
 import { LoadMoreButton } from "@/components/LoadMoreButton";
 import { useLoadMore } from "@/lib/useLoadMore";
@@ -30,24 +31,33 @@ export function ScheduledMatchList({ items }: { items: ScheduledMatchItem[] }) {
     <>
       <ul className="space-y-3">
         {visibleItems.map((m) => (
-          <li key={m.id}>
-            <MatchScoreCard
-              action={m.action}
-              deleteAction={m.deleteAction}
-              type={m.type}
-              teamA1={m.teamA1}
-              teamA2={m.teamA2}
-              teamB1={m.teamB1}
-              teamB2={m.teamB2}
-              initialTeamAScore={m.initialTeamAScore}
-              initialTeamBScore={m.initialTeamBScore}
-              statusLabel={m.statusLabel}
-              submitLabel="승인"
-            />
-          </li>
+          <ScheduledMatchRow key={m.id} item={m} />
         ))}
       </ul>
       <LoadMoreButton hasMore={hasMore} onClick={showMore} />
     </>
   );
 }
+
+// "더보기"로 visibleCount만 늘어날 때 이미 그려둔 카드가 다시 렌더링되지 않도록
+// 행을 memo로 분리한다. 점수 입력 카드는 내부에 자체 상태(스테퍼)를 가진
+// 컴포넌트라, 불필요한 재렌더링을 막는 효과가 특히 크다.
+const ScheduledMatchRow = memo(function ScheduledMatchRow({ item: m }: { item: ScheduledMatchItem }) {
+  return (
+    <li>
+      <MatchScoreCard
+        action={m.action}
+        deleteAction={m.deleteAction}
+        type={m.type}
+        teamA1={m.teamA1}
+        teamA2={m.teamA2}
+        teamB1={m.teamB1}
+        teamB2={m.teamB2}
+        initialTeamAScore={m.initialTeamAScore}
+        initialTeamBScore={m.initialTeamBScore}
+        statusLabel={m.statusLabel}
+        submitLabel="승인"
+      />
+    </li>
+  );
+});

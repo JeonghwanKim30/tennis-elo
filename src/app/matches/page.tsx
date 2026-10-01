@@ -36,10 +36,17 @@ export default async function MatchesPage({
 }: {
   searchParams: Promise<{ scope?: string }>;
 }) {
+  // 세션 조회는 경기일 목록 쿼리와 아무 관계가 없다(user는 아래 렌더링에서
+  // isAdmin/currentUserId로만 쓰인다) — 그런데 await로 먼저 기다리면 그
+  // 왕복이 끝나고 나서야 경기일 쿼리가 출발해 두 지연이 그대로 합산됐다.
+  // 여기서는 await 없이 먼저 띄워두고, 경기일 쿼리와 함께 Promise.all로
+  // 받아 두 왕복이 겹쳐 돌게 한다(경기 목록은 앱의 기본 진입 탭이라 이
+  // 한 번의 왕복 차이가 체감 진입 속도에 그대로 반영된다).
+  const userPromise = getCurrentUser();
+
   const { scope: rawScope } = await searchParams;
   const scope: Scope = rawScope === "all" || rawScope === "past" ? rawScope : "upcoming";
 
-  const user = await getCurrentUser();
   // 한국 시간(KST) 기준 자정에 날짜가 바뀌어야 한다 — UTC 기준으로 계산하면
   // KST 00:00~09:00 사이에는 여전히 "어제"로 취급돼 다가오는/지난 경기 구분이
   // 어긋난다(lib/date.ts 참고).
@@ -49,26 +56,29 @@ export default async function MatchesPage({
   // 목록은 동일하다 — 다만 지난/다가오는 경기 중 안 쓰는 절반을 애초에
   // DB에서부터 안 끌어와서(참가자·사진 include까지) 매번 전체 이력을 다
   // 가져오던 것보다 훨씬 가볍다.
-  const days = await prisma.matchDay.findMany({
-    where:
-      scope === "upcoming"
-        ? { date: { gte: today } }
-        : scope === "past"
-          ? { date: { lt: today } }
-          : undefined,
-    orderBy: { date: "desc" },
-    include: {
-      participants: {
-        include: {
-          user: {
-            select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
+  const [user, days] = await Promise.all([
+    userPromise,
+    prisma.matchDay.findMany({
+      where:
+        scope === "upcoming"
+          ? { date: { gte: today } }
+          : scope === "past"
+            ? { date: { lt: today } }
+            : undefined,
+      orderBy: { date: "desc" },
+      include: {
+        participants: {
+          include: {
+            user: {
+              select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
+            },
           },
         },
+        photos: { orderBy: { createdAt: "asc" }, take: 1 },
+        _count: { select: { photos: true } },
       },
-      photos: { orderBy: { createdAt: "asc" }, take: 1 },
-      _count: { select: { photos: true } },
-    },
-  });
+    }),
+  ]);
 
   const daysWithDiff = days.map((d) => ({
     ...d,

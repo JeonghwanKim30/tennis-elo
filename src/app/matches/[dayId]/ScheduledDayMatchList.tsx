@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { MatchupRow } from "@/components/MatchupRow";
 import { MatchScoreCard, type ScoreActionState } from "@/components/MatchScoreCard";
 import { LoadMoreButton } from "@/components/LoadMoreButton";
@@ -39,46 +40,56 @@ export function ScheduledDayMatchList({ items }: { items: ScheduledDayMatchItem[
   return (
     <>
       <ul className="space-y-3">
-        {visibleItems.map((m) =>
-          m.action ? (
-            <li key={m.id}>
-              <MatchScoreCard
-                action={m.action}
-                deleteAction={m.deleteAction}
-                type={m.type}
-                teamA1={m.teamA1}
-                teamA2={m.teamA2}
-                teamB1={m.teamB1}
-                teamB2={m.teamB2}
-                teamA1Tier={m.teamA1Tier}
-                teamA2Tier={m.teamA2Tier}
-                teamB1Tier={m.teamB1Tier}
-                teamB2Tier={m.teamB2Tier}
-                initialTeamAScore={m.initialTeamAScore}
-                initialTeamBScore={m.initialTeamBScore}
-                statusLabel={m.statusLabel}
-                submitLabel="결과 제출"
-              />
-            </li>
-          ) : (
-            <li key={m.id} className="surface-card px-5 py-4">
-              <p className="mb-2 text-sm text-muted-foreground">{m.typeLabel} · 점수 입력 대기 중</p>
-              <MatchupRow
-                type={m.type}
-                teamA1={m.teamA1}
-                teamA2={m.teamA2}
-                teamB1={m.teamB1}
-                teamB2={m.teamB2}
-                teamA1Tier={m.teamA1Tier}
-                teamA2Tier={m.teamA2Tier}
-                teamB1Tier={m.teamB1Tier}
-                teamB2Tier={m.teamB2Tier}
-              />
-            </li>
-          )
-        )}
+        {visibleItems.map((m) => (
+          <ScheduledDayMatchRow key={m.id} item={m} />
+        ))}
       </ul>
       <LoadMoreButton hasMore={hasMore} onClick={showMore} />
     </>
   );
 }
+
+// "더보기"로 visibleCount만 늘어날 때 이미 그려둔 카드가 다시 렌더링되지 않도록
+// 행을 memo로 분리한다. 로그인 사용자용 MatchScoreCard는 내부에 자체 상태
+// (스테퍼)를 가지므로 불필요한 재렌더링을 막는 효과가 특히 크다.
+const ScheduledDayMatchRow = memo(function ScheduledDayMatchRow({ item: m }: { item: ScheduledDayMatchItem }) {
+  if (m.action) {
+    return (
+      <li>
+        <MatchScoreCard
+          action={m.action}
+          deleteAction={m.deleteAction}
+          type={m.type}
+          teamA1={m.teamA1}
+          teamA2={m.teamA2}
+          teamB1={m.teamB1}
+          teamB2={m.teamB2}
+          teamA1Tier={m.teamA1Tier}
+          teamA2Tier={m.teamA2Tier}
+          teamB1Tier={m.teamB1Tier}
+          teamB2Tier={m.teamB2Tier}
+          initialTeamAScore={m.initialTeamAScore}
+          initialTeamBScore={m.initialTeamBScore}
+          statusLabel={m.statusLabel}
+          submitLabel="결과 제출"
+        />
+      </li>
+    );
+  }
+  return (
+    <li className="surface-card px-5 py-4">
+      <p className="mb-2 text-sm text-muted-foreground">{m.typeLabel} · 점수 입력 대기 중</p>
+      <MatchupRow
+        type={m.type}
+        teamA1={m.teamA1}
+        teamA2={m.teamA2}
+        teamB1={m.teamB1}
+        teamB2={m.teamB2}
+        teamA1Tier={m.teamA1Tier}
+        teamA2Tier={m.teamA2Tier}
+        teamB1Tier={m.teamB1Tier}
+        teamB2Tier={m.teamB2Tier}
+      />
+    </li>
+  );
+});
