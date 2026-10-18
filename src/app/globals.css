@@ -83,6 +83,16 @@ textarea::placeholder {
   box-shadow: 0 1px 2px rgba(31, 59, 48, 0.04), 0 6px 16px -8px rgba(47, 191, 113, 0.14);
 }
 
+/* 특수 이벤트(MT/대회) 카드 — 일반 경기와 한눈에 구분되도록 연한 노란 톤.
+   .surface-card와 같은 클래스 특정도라 Tailwind 유틸리티로 덮으면 레이어
+   순서에 의존하므로, 바로 뒤에 선언해 확실히 덮도록 전용 클래스로 둔다.
+   사용법: class="surface-card event-card" */
+.event-card {
+  background: rgb(254 249 195 / 0.8); /* #FEF9C3 / 80% */
+  border-color: #fde68a;
+  box-shadow: 0 1px 2px rgba(120, 90, 10, 0.05), 0 6px 16px -8px rgba(234, 179, 8, 0.22);
+}
+
 /* 버튼/클릭 가능한 링크에 눌리는 느낌을 준다. 모바일에서는 hover가 잘 안 먹으니
    active(누르는 순간)를 기준으로 확실하게 축소 + 그림자 감소, 마우스 환경에서는
    hover 시 살짝 떠오르는 느낌을 더한다. */

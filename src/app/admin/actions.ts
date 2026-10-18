@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { INITIAL_RATING } from "@/lib/elo";
 import { applyEloForMatch, recalculateAllElo } from "@/lib/eloEngine";
-import { matchScoreSchema } from "@/lib/validation";
+import { matchScoreSchema, eventDaySchema } from "@/lib/validation";
 import { dateOnly } from "@/lib/date";
 import type { MatchResult } from "@/generated/prisma/client";
 
@@ -229,4 +229,78 @@ export async function deleteMatchDayAction(dayId: string) {
   revalidatePath("/matches");
   revalidatePath("/leaderboard");
   revalidatePath("/profile");
+}
+
+export interface CreateEventState {
+  error?: string;
+}
+
+// 특수 이벤트(MT/대회) 경기일 생성. 일반 경기일(createMatchDayAction)과 달리
+// 제목·진행 시간·총 경기 수·코트 목록을 함께 받아 한 트랜잭션에서 만든다.
+//
+// MatchDay.date에 @unique가 걸려 있어 하루에 경기일은 하나뿐이다. 일반 경기일
+// 생성은 이 경우 기존 경기일로 조용히 redirect하지만, 이벤트는 관리자가 제목·
+// 코트까지 다 입력한 상태라 엉뚱한 일반 경기일로 보내면 입력을 잃은 것처럼
+// 보인다 — 그래서 여기서는 명확한 에러로 알려준다.
+export async function createEventDayAction(
+  _prevState: CreateEventState,
+  formData: FormData
+): Promise<CreateEventState> {
+  const admin = await requireAdmin();
+
+  const courtNames = formData
+    .getAll("courtName")
+    .filter((v): v is string => typeof v === "string")
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0);
+
+  const parsed = eventDaySchema.safeParse({
+    title: formData.get("title"),
+    date: formData.get("date"),
+    location: formData.get("location") || undefined,
+    startTime: formData.get("startTime"),
+    endTime: formData.get("endTime"),
+    plannedMatchCount: formData.get("plannedMatchCount"),
+    courtNames,
+    eloMode: formData.get("eloMode") || "NONE",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "입력값을 확인해주세요." };
+  }
+  const data = parsed.data;
+
+  const date = dateOnly(data.date);
+  if (Number.isNaN(date.getTime())) {
+    return { error: "날짜가 올바르지 않습니다." };
+  }
+
+  const existing = await prisma.matchDay.findUnique({
+    where: { date },
+    select: { id: true, kind: true, title: true },
+  });
+  if (existing) {
+    const what = existing.kind === "SPECIAL" ? `이벤트 "${existing.title ?? "제목 없음"}"` : "일반 경기일";
+    return { error: `${data.date}에는 이미 ${what}이 등록되어 있습니다. 다른 날짜를 선택해주세요.` };
+  }
+
+  const day = await prisma.matchDay.create({
+    data: {
+      date,
+      location: data.location ?? null,
+      createdBy: admin.id,
+      kind: "SPECIAL",
+      title: data.title,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      plannedMatchCount: data.plannedMatchCount,
+      eloMode: data.eloMode,
+      courts: {
+        create: data.courtNames.map((name, index) => ({ name, order: index })),
+      },
+    },
+  });
+
+  revalidatePath("/matches");
+  revalidatePath("/admin");
+  redirect(`/matches/${day.id}`);
 }

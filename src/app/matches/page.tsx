@@ -31,6 +31,22 @@ function buildScopeHref(scope: Scope) {
   return scope === "upcoming" ? "/matches" : `/matches?scope=${scope}`;
 }
 
+// 이벤트 카드 둘째 줄 요약 — "15:00~19:00 · 3코트 · 12경기". 비어있는 항목은
+// 빼고 이어 붙여서, 시간을 입력하지 않은 이벤트에서도 줄이 어색해지지 않게 한다.
+function eventSummaryLabel(day: {
+  startTime: string | null;
+  endTime: string | null;
+  plannedMatchCount: number | null;
+  _count: { courts: number };
+}): string | null {
+  const parts = [
+    day.startTime && day.endTime ? `${day.startTime}~${day.endTime}` : null,
+    day._count.courts > 0 ? `${day._count.courts}코트` : null,
+    day.plannedMatchCount ? `${day.plannedMatchCount}경기` : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 export default async function MatchesPage({
   searchParams,
 }: {
@@ -75,7 +91,9 @@ export default async function MatchesPage({
           },
         },
         photos: { orderBy: { createdAt: "asc" }, take: 1 },
-        _count: { select: { photos: true } },
+        // 이벤트 카드 요약("3코트")에 코트 수가 필요하다 — 코트 행 자체는 쓰지
+        // 않으므로 개수만 센다.
+        _count: { select: { photos: true, courts: true } },
       },
     }),
   ]);
@@ -122,6 +140,9 @@ export default async function MatchesPage({
           dDayLabel: dDayLabel(d.diffDays),
           time: d.time,
           location: d.location,
+          isEvent: d.kind === "SPECIAL",
+          title: d.title,
+          eventSummary: d.kind === "SPECIAL" ? eventSummaryLabel(d) : null,
           attending: d.participants
             .filter((p) => p.status === "ATTENDING")
             .map((p) => ({

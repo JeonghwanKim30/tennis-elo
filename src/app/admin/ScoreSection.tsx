@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { avatarSrc } from "@/lib/avatar";
 import { RESULT_LABEL } from "@/lib/matchDisplay";
-import { type TeamPlayer } from "@/components/TeamBadges";
+import { buildPlayerDirectory } from "@/lib/playerDirectory";
 import { deleteMatchAction, enterMatchScoreAction } from "./actions";
 import { ScheduledMatchList, type ScheduledMatchItem } from "./ScheduledMatchList";
 import { CompletedMatchList, type CompletedMatchItem } from "./CompletedMatchList";
@@ -15,7 +14,7 @@ export async function ScoreSection() {
   // 결과는 동일하면서 왕복 횟수만 3번 -> 2번(병렬)으로 줄어든다. status 필터를
   // 걸지 않는 이유는 추방/탈퇴된 유저가 과거 완료 경기에 등장할 수 있어서다
   // (해당 유저만 목록에서 빠지면 매치 자체가 렌더링에서 통째로 스킵된다).
-  const [scheduledMatches, completedMatches, allUsers] = await Promise.all([
+  const [scheduledMatches, completedMatches, allUsers, allGuests] = await Promise.all([
     prisma.match.findMany({
       where: { status: "PENDING" },
       include: { matchDay: true },
@@ -30,11 +29,13 @@ export async function ScoreSection() {
     prisma.user.findMany({
       select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
     }),
+    // 특수 이벤트 게스트도 Match.teamAPlayer*(FK 아닌 String 컬럼)에 회원과 같은
+    // 자리로 들어간다 — 여기 맵에 함께 넣지 않으면 아래 .filter(... !== null)이
+    // 게스트가 끼어있는 이벤트 경기를 전부 걸러내 관리자가 점수를 입력할 수 없다.
+    prisma.eventGuest.findMany({ select: { id: true, name: true, gender: true } }),
   ]);
 
-  const playerById = new Map<string, TeamPlayer>(
-    allUsers.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
-  );
+  const playerById = buildPlayerDirectory(allUsers, allGuests);
 
   // 목록 렌더링(최근 5개 + 더보기)은 클라이언트 컴포넌트(ScheduledMatchList/
   // CompletedMatchList)가 맡고, 여기서는 표시에 필요한 값만 미리 계산해서

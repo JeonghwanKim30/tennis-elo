@@ -15,6 +15,11 @@ export interface MatchDayListItem {
   dDayLabel: string;
   time: string | null;
   location: string | null;
+  // 특수 이벤트(MT/대회)면 노란 테마(.event-card)와 제목/요약을 함께 보여준다.
+  isEvent: boolean;
+  title: string | null;
+  // "15:00~19:00 · 3코트 · 12경기"처럼 서버에서 미리 만들어 넘기는 요약 한 줄.
+  eventSummary: string | null;
   attending: DayParticipant[];
   thumbnailSrc: string | null;
   photoCount: number;
@@ -189,8 +194,8 @@ const MatchDayCard = memo(function MatchDayCard({
   return (
     <li
       className={`surface-card relative transition-all duration-200 ease-out ${
-        isRemoving ? "-translate-x-2 opacity-0" : "opacity-100"
-      }`}
+        day.isEvent ? "event-card" : ""
+      } ${isRemoving ? "-translate-x-2 opacity-0" : "opacity-100"}`}
     >
       <Link
         href={`/matches/${day.id}`}
@@ -199,7 +204,12 @@ const MatchDayCard = memo(function MatchDayCard({
       >
         <div className="flex min-w-0 items-center justify-between gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span className="truncate font-medium">{day.dateLabel}</span>
+            {day.isEvent && (
+              <span className="shrink-0 rounded-full bg-amber-200/70 px-2 py-0.5 text-xs font-bold text-amber-900">
+                🎪 이벤트
+              </span>
+            )}
+            <span className="truncate font-medium">{day.title ?? day.dateLabel}</span>
             <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
               {day.dDayLabel}
             </span>
@@ -223,6 +233,13 @@ const MatchDayCard = memo(function MatchDayCard({
             </div>
           )}
         </div>
+        {/* 이벤트는 카드 제목 자리를 이벤트명이 차지하므로, 날짜와 진행 요약
+            (시간·코트 수·경기 수)을 바로 아래 한 줄로 따로 보여준다. */}
+        {day.isEvent && (
+          <p className="text-xs font-medium text-amber-900/80">
+            {[day.dateLabel, day.eventSummary].filter(Boolean).join(" · ")}
+          </p>
+        )}
         <DayParticipantsPreview participants={day.attending} />
       </Link>
       {isAdmin && (

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { avatarSrc } from "@/lib/avatar";
-import { type TeamPlayer } from "@/components/TeamBadges";
+import { buildPlayerDirectory } from "@/lib/playerDirectory";
 import { TierBadge, PlacementBadge } from "@/components/TierBadge";
 import { TierInfoModal } from "@/components/TierInfoModal";
 import { PlacementInfoModal } from "@/components/PlacementInfoModal";
@@ -29,7 +29,7 @@ export default async function ProfilePage() {
   // 선수 ID로 유저를 또 조회하는 두 번째 왕복을 없애기 위해서)다 — 동호회
   // 규모의 유저 수는 전부 가져와도 가볍고, 추방/탈퇴 유저가 과거 경기에
   // 등장해도 빠짐없이 이름/아바타를 표시할 수 있다는 장점도 있다.
-  const [user, ratings, matches, allUsers] = await Promise.all([
+  const [user, ratings, matches, allUsers, allGuests] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: authUser.id },
       select: {
@@ -64,6 +64,9 @@ export default async function ProfilePage() {
     prisma.user.findMany({
       select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
     }),
+    // 특수 이벤트(MT/대회) 게스트 — 회원과 같은 자리로 경기에 들어가므로 함께
+    // 받아야 그 경기가 기록에서 누락되지 않는다(lib/playerDirectory.ts 참고).
+    prisma.eventGuest.findMany({ select: { id: true, name: true, gender: true } }),
   ]);
 
   const singles = ratings.find((r) => r.type === "SINGLES");
@@ -92,9 +95,7 @@ export default async function ProfilePage() {
     ? null
     : compareTierChange(user.lastSeenTierDoubles, currentDoublesTier);
 
-  const playerById = new Map<string, TeamPlayer>(
-    allUsers.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
-  );
+  const playerById = buildPlayerDirectory(allUsers, allGuests);
 
   return (
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-12">

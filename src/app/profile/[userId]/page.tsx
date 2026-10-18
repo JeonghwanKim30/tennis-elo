@@ -7,7 +7,7 @@ import { TierBadge, PlacementBadge } from "@/components/TierBadge";
 import { TierInfoModal } from "@/components/TierInfoModal";
 import { PlacementInfoModal } from "@/components/PlacementInfoModal";
 import { getTier, isPlacement } from "@/lib/tier";
-import { type TeamPlayer } from "@/components/TeamBadges";
+import { buildPlayerDirectory } from "@/lib/playerDirectory";
 import { ProfileStats } from "../ProfileStats";
 
 // 타인의 프로필 조회 전용 페이지 — 공개 정보(사진/이름/자기소개/ELO/전적/티어)만
@@ -32,7 +32,7 @@ export default async function PublicProfilePage({
   // 4번 쌓여 그대로 지연으로 이어진다. allUsers를 매치 등장 선수로 필터링
   // 하지 않고 통째로 가져오는 이유는 ScoreSection/profile(본인)과 동일하다
   // (매치 조회 "다음"에야 그 결과로 유저를 또 조회하는 두 번째 왕복 제거).
-  const [profileUser, ratings, matches, allUsers] = await Promise.all([
+  const [profileUser, ratings, matches, allUsers, allGuests] = await Promise.all([
     // 탈퇴/추방/미승인 회원은 공개 프로필 대상이 아니다(다른 공개 목록들과 동일한 기준).
     // 공개 프로필에 실제로 쓰는 필드만 선택 — 전화번호(비공개 정책)나 pinHash
     // 같은 민감/불필요 컬럼을 서버 메모리로도 끌어오지 않는다.
@@ -68,6 +68,9 @@ export default async function PublicProfilePage({
     prisma.user.findMany({
       select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
     }),
+    // 특수 이벤트(MT/대회) 게스트 — 회원과 같은 자리로 경기에 들어가므로 함께
+    // 받아야 그 경기가 기록에서 누락되지 않는다(lib/playerDirectory.ts 참고).
+    prisma.eventGuest.findMany({ select: { id: true, name: true, gender: true } }),
   ]);
   if (!profileUser || profileUser.status !== "ACTIVE") {
     notFound();
@@ -83,9 +86,7 @@ export default async function PublicProfilePage({
   const peakTotal = (singles?.rating ?? 1200) >= (doubles?.rating ?? 1200) ? singlesTotal : doublesTotal;
   const headerPlacement = isPlacement(peakTotal);
 
-  const playerById = new Map<string, TeamPlayer>(
-    allUsers.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
-  );
+  const playerById = buildPlayerDirectory(allUsers, allGuests);
 
   return (
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-12">

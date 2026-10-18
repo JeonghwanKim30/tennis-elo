@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { avatarSrc } from "@/lib/avatar";
+import { guestAvatarSrc } from "@/lib/playerDirectory";
 import { RESULT_LABEL } from "@/lib/matchDisplay";
 import { type TeamPlayer } from "@/components/TeamBadges";
 import { getTier, type Tier } from "@/lib/tier";
@@ -14,6 +15,9 @@ import { AttendanceCarousel } from "./AttendanceCarousel";
 import { AttendanceMemberGrid } from "./AttendanceMemberGrid";
 import { MvpModal } from "./MvpModal";
 import { MatchDayPhotoGallery } from "./MatchDayPhotoGallery";
+import { EventGuestPanel } from "./EventGuestPanel";
+import { EventTimelineBoard, type EventPlacedMatch } from "./EventTimelineBoard";
+import { buildEventSlots } from "@/lib/eventSchedule";
 import { ScheduledDayMatchList, type ScheduledDayMatchItem } from "./ScheduledDayMatchList";
 import { CompletedDayMatchList, type CompletedDayMatchItem } from "./CompletedDayMatchList";
 import { submitMatchScoreAction } from "./actions";
@@ -64,6 +68,9 @@ export default async function MatchDayPage({
           include: { eloHistory: { select: { userId: true, delta: true } } },
         },
         photos: { orderBy: { createdAt: "asc" } },
+        // 특수 이벤트(MT/대회)에서만 채워져 있다 — 일반 경기일은 빈 배열.
+        courts: { orderBy: { order: "asc" } },
+        guests: { orderBy: { createdAt: "asc" } },
       },
     }),
     // 회원 전체(Users)를 기준으로 하고, 그날의 응답 기록(Attendants = MatchDayParticipant)을
@@ -90,8 +97,20 @@ export default async function MatchDayPage({
     avatarSrc: avatarSrc(u),
     status: statusByUserId.get(u.id) ?? "PENDING",
   }));
-  const playerById = new Map(members.map((m) => [m.id, m]));
+  // 게스트도 회원과 같은 자리(Match.teamAPlayer* — FK가 아닌 String 컬럼)에
+  // 들어가므로, 이름/아바타 조회용 맵에 반드시 함께 넣어야 한다. 넣지 않으면
+  // 아래 경기 목록이 "모르는 id"로 보고 해당 경기를 통째로 걸러낸다(화면에서 사라짐).
+  const guestPlayers: TeamPlayer[] = day.guests.map((g) => ({
+    id: g.id,
+    name: g.name,
+    avatarSrc: guestAvatarSrc(g.gender),
+  }));
+  const playerById = new Map<string, TeamPlayer>([
+    ...members.map((m) => [m.id, m] as const),
+    ...guestPlayers.map((g) => [g.id, g] as const),
+  ]);
   const attendingMembers: TeamPlayer[] = members.filter((m) => m.status === "ATTENDING");
+  const isEvent = day.kind === "SPECIAL";
 
   const ratingByUserType = new Map(eloRatings.map((r) => [`${r.userId}_${r.type}`, r.rating]));
   function tierFor(userId: string, type: MatchType): Tier {
@@ -135,13 +154,39 @@ export default async function MatchDayPage({
 
   return (
     <main className="mx-auto max-w-3xl space-y-8 px-4 py-12">
-      <div>
-        <h1 className="text-2xl font-bold">{dateLabel} 경기</h1>
-        {(day.time || day.location) && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {day.time && <span>{day.time}</span>}
-            {day.time && day.location && <span> · </span>}
-            {day.location && <span>{day.location}</span>}
+      {/* 이벤트는 제목이 주인공이고 날짜·진행시간·코트 수가 부제가 된다.
+          일반 경기일은 기존처럼 날짜가 제목이다. */}
+      <div className={isEvent ? "surface-card event-card px-5 py-4" : undefined}>
+        {isEvent && (
+          <span className="mb-1 inline-block rounded-full bg-amber-200/70 px-2 py-0.5 text-xs font-bold text-amber-900">
+            🎪 특수 이벤트
+          </span>
+        )}
+        <h1 className="text-2xl font-bold">{isEvent ? day.title : `${dateLabel} 경기`}</h1>
+        {isEvent ? (
+          <p className="mt-1 text-sm text-amber-900/80">
+            {[
+              dateLabel,
+              day.startTime && day.endTime ? `${day.startTime}~${day.endTime}` : null,
+              day.courts.length > 0 ? `${day.courts.length}코트` : null,
+              day.plannedMatchCount ? `${day.plannedMatchCount}경기` : null,
+              day.location,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        ) : (
+          (day.time || day.location) && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {day.time && <span>{day.time}</span>}
+              {day.time && day.location && <span> · </span>}
+              {day.location && <span>{day.location}</span>}
+            </p>
+          )
+        )}
+        {isEvent && day.eloMode === "NONE" && (
+          <p className="mt-2 text-xs text-amber-900/70">
+            이 이벤트의 경기 결과는 기록만 남고 ELO 레이팅에는 반영되지 않습니다.
           </p>
         )}
       </div>
@@ -190,9 +235,79 @@ export default async function MatchDayPage({
         )}
       </section>
 
-      {user?.role === "ADMIN" && <AutoScheduleGenerator dayId={day.id} participants={attendingMembers} />}
+      {/* 특수 이벤트는 게스트 명단 + 타임라인 수동 배치로 대진을 만든다.
+          일반 경기일의 자동 대진표/수동 경기 추가는 코트·시간대 개념이 없어
+          타임라인에 올라가지 않으므로 이벤트에서는 보여주지 않는다. */}
+      {isEvent ? (
+        <>
+          <EventGuestPanel
+            dayId={day.id}
+            guests={day.guests.map((g) => ({
+              id: g.id,
+              name: g.name,
+              avatarSrc: guestAvatarSrc(g.gender),
+              genderLabel: g.gender === "FEMALE" ? "여성" : "남성",
+              mmr: Math.round(g.mmr),
+            }))}
+            canManage={user?.role === "ADMIN"}
+          />
 
-      {user && <MatchComposerPanel dayId={day.id} participants={attendingMembers} />}
+          <EventTimelineBoard
+            dayId={day.id}
+            courts={day.courts.map((c) => ({ id: c.id, name: c.name }))}
+            slots={buildEventSlots({
+              startTime: day.startTime,
+              endTime: day.endTime,
+              plannedMatchCount: day.plannedMatchCount,
+              courtCount: day.courts.length,
+            })}
+            plannedMatchCount={day.plannedMatchCount ?? 0}
+            players={[
+              ...attendingMembers.map((m) => ({ ...m, isGuest: false })),
+              ...guestPlayers.map((g) => ({ ...g, isGuest: true })),
+            ]}
+            placed={day.matches
+              .map((m): EventPlacedMatch | null => {
+                const a1 = playerById.get(m.teamAPlayer1);
+                const a2 = m.teamAPlayer2 ? playerById.get(m.teamAPlayer2) : null;
+                const b1 = playerById.get(m.teamBPlayer1);
+                const b2 = m.teamBPlayer2 ? playerById.get(m.teamBPlayer2) : null;
+                if (!a1 || !b1) return null;
+                return {
+                  id: m.id,
+                  courtId: m.courtId,
+                  slotIndex: m.slotIndex,
+                  type: m.type,
+                  teamAPlayer1: m.teamAPlayer1,
+                  teamAPlayer2: m.teamAPlayer2,
+                  teamBPlayer1: m.teamBPlayer1,
+                  teamBPlayer2: m.teamBPlayer2,
+                  teamA1: a1,
+                  teamA2: a2,
+                  teamB1: b1,
+                  teamB2: b2,
+                  isLocked: m.status !== "PENDING",
+                  resultLabel: m.result ? RESULT_LABEL[m.result] : undefined,
+                  scoreLabel:
+                    m.teamAScore !== null && m.teamBScore !== null
+                      ? `(${m.teamAScore}:${m.teamBScore})`
+                      : undefined,
+                };
+              })
+              .filter((m): m is EventPlacedMatch => m !== null)}
+            canManage={user?.role === "ADMIN"}
+            deleteAction={deleteMatchAction}
+          />
+        </>
+      ) : (
+        <>
+          {user?.role === "ADMIN" && (
+            <AutoScheduleGenerator dayId={day.id} participants={attendingMembers} />
+          )}
+
+          {user && <MatchComposerPanel dayId={day.id} participants={attendingMembers} />}
+        </>
+      )}
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">예정된 경기 ({scheduled.length})</h2>

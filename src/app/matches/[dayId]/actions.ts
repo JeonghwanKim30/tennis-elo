@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser, requireAdmin } from "@/lib/session";
-import { matchSubmitSchema, matchScoreSchema } from "@/lib/validation";
+import { matchSubmitSchema, matchScoreSchema, eventGuestSchema } from "@/lib/validation";
 import { MAX_PHOTOS_PER_DAY } from "./photoConfig";
+import { playerIdsBusyInSlot, slotCountFor } from "@/lib/eventSchedule";
 import { avatarSrc } from "@/lib/avatar";
 import { getTier, type Tier } from "@/lib/tier";
 import { INITIAL_RATING } from "@/lib/elo";
@@ -325,4 +326,236 @@ export async function commitDoublesScheduleAction(
   revalidatePath(`/matches/${dayId}`);
   revalidatePath("/matches");
   return { count: matches.length };
+}
+
+// ── 특수 이벤트(MT/대회) ────────────────────────────────────────────
+
+export interface EventGuestState {
+  error?: string;
+  /** 동명 회원이 있을 때의 경고 — 차단하지 않고 그대로 등록하되 관리자에게 알린다. */
+  warning?: string;
+}
+
+// 계정 없는 외부 게스트를 이 이벤트 명단에 올린다(이름/성별/MMR만 받음).
+export async function addEventGuestAction(
+  dayId: string,
+  _prevState: EventGuestState,
+  formData: FormData
+): Promise<EventGuestState> {
+  const admin = await requireAdmin();
+
+  const parsed = eventGuestSchema.safeParse({
+    name: formData.get("name"),
+    gender: formData.get("gender"),
+    mmr: formData.get("mmr"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "입력값을 확인해주세요." };
+  }
+  const { name, gender, mmr } = parsed.data;
+
+  const day = await prisma.matchDay.findUniqueOrThrow({
+    where: { id: dayId },
+    select: { kind: true },
+  });
+  if (day.kind !== "SPECIAL") {
+    return { error: "게스트는 특수 이벤트 경기에만 추가할 수 있습니다." };
+  }
+
+  const [duplicateGuest, sameNameMember] = await Promise.all([
+    prisma.eventGuest.findFirst({ where: { matchDayId: dayId, name }, select: { id: true } }),
+    prisma.user.findFirst({ where: { name, status: "ACTIVE" }, select: { id: true } }),
+  ]);
+
+  // 같은 이벤트에 동명 게스트가 둘이면 대진표에서 누가 누군지 구분이 불가능하다.
+  if (duplicateGuest) {
+    return { error: `이미 "${name}" 게스트가 있습니다. 뒤에 숫자를 붙여 구분해주세요(예: ${name}2).` };
+  }
+
+  await prisma.eventGuest.create({
+    data: { matchDayId: dayId, name, gender, mmr, createdBy: admin.id },
+  });
+
+  revalidatePath(`/matches/${dayId}`);
+  return {
+    // 동명이인은 실제로 있을 수 있으므로 차단하지 않고 알려주기만 한다.
+    warning: sameNameMember
+      ? `회원 "${name}"도 있습니다 — 같은 사람이라면 게스트 대신 회원으로 참가 처리해주세요.`
+      : undefined,
+  };
+}
+
+// 반환값으로 에러를 돌려주는 이유: Next.js는 프로덕션에서 서버 액션이 throw한
+// 에러 메시지를 클라이언트로 내려주지 않고 일반 메시지로 가린다 — 관리자에게
+// "왜 못 지우는지"를 그대로 보여줘야 하므로 상태로 돌려준다.
+export async function deleteEventGuestAction(guestId: string): Promise<EventGuestState> {
+  await requireAdmin();
+
+  const guest = await prisma.eventGuest.findUniqueOrThrow({
+    where: { id: guestId },
+    select: { id: true, matchDayId: true, name: true },
+  });
+
+  // Match.teamAPlayer* 는 FK가 아니라 순수 String이라, 배정된 게스트를 지우면
+  // 경기에 존재하지 않는 id가 남는다(화면에서 이름을 못 찾고 ELO 재계산도 실패).
+  // 그래서 먼저 경기에서 빼도록 안내한다.
+  const placedCount = await prisma.match.count({
+    where: {
+      matchDayId: guest.matchDayId,
+      OR: [
+        { teamAPlayer1: guestId },
+        { teamAPlayer2: guestId },
+        { teamBPlayer1: guestId },
+        { teamBPlayer2: guestId },
+      ],
+    },
+  });
+  if (placedCount > 0) {
+    return {
+      error: `"${guest.name}" 게스트가 ${placedCount}개 경기에 배정되어 있습니다. 먼저 해당 경기에서 제외해주세요.`,
+    };
+  }
+
+  await prisma.eventGuest.delete({ where: { id: guestId } });
+  revalidatePath(`/matches/${guest.matchDayId}`);
+  return {};
+}
+
+export interface PlaceEventMatchState {
+  error?: string;
+  success?: boolean;
+}
+
+/**
+ * 특수 이벤트의 대진을 특정 (코트, 시간대) 칸에 배치한다. matchId가 있으면 그 칸의
+ * 기존 경기를 수정하고, 없으면 새로 만든다.
+ *
+ * 핵심 검증 — 한 사람은 같은 시간대에 코트를 불문하고 한 경기만 뛸 수 있다.
+ * 이 규칙은 teamAPlayer1/2, teamBPlayer1/2 네 컬럼에 걸쳐 있어 DB 제약으로
+ * 표현할 수 없다. 화면에서도 선택을 막지만(배정된 사람은 선택 불가) 관리자가
+ * 둘이서 동시에 편집하면 화면의 목록이 낡을 수 있으므로, 여기서 트랜잭션
+ * 안에서 다시 조회해 최종 판정한다.
+ */
+export async function placeEventMatchAction(
+  dayId: string,
+  _prevState: PlaceEventMatchState,
+  formData: FormData
+): Promise<PlaceEventMatchState> {
+  const admin = await requireAdmin();
+
+  const matchId = formData.get("matchId");
+  const courtId = formData.get("courtId");
+  const slotIndexRaw = formData.get("slotIndex");
+  if (typeof courtId !== "string" || !courtId) return { error: "코트를 선택해주세요." };
+  const slotIndex = Number(slotIndexRaw);
+  if (!Number.isInteger(slotIndex) || slotIndex < 0) return { error: "시간대가 올바르지 않습니다." };
+
+  // 경기 내부의 중복(같은 사람을 A팀·B팀에 동시 배치)과 복식 인원 수는 일반
+  // 경기 등록과 동일한 스키마로 검증한다.
+  const parsed = matchSubmitSchema.safeParse({
+    type: formData.get("type"),
+    teamAPlayer1: formData.get("teamAPlayer1"),
+    teamAPlayer2: formData.get("teamAPlayer2") || undefined,
+    teamBPlayer1: formData.get("teamBPlayer1"),
+    teamBPlayer2: formData.get("teamBPlayer2") || undefined,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "입력값을 확인해주세요." };
+  }
+  const data = parsed.data;
+  const playerIds = [data.teamAPlayer1, data.teamAPlayer2, data.teamBPlayer1, data.teamBPlayer2].filter(
+    (id): id is string => !!id
+  );
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const day = await tx.matchDay.findUniqueOrThrow({
+        where: { id: dayId },
+        select: { kind: true, startTime: true, endTime: true, plannedMatchCount: true },
+      });
+      if (day.kind !== "SPECIAL") throw new Error("특수 이벤트 경기가 아닙니다.");
+
+      const [courts, attending, guests] = await Promise.all([
+        tx.eventCourt.findMany({ where: { matchDayId: dayId }, select: { id: true } }),
+        tx.matchDayParticipant.findMany({
+          where: { matchDayId: dayId, status: "ATTENDING" },
+          select: { userId: true },
+        }),
+        tx.eventGuest.findMany({ where: { matchDayId: dayId }, select: { id: true } }),
+      ]);
+
+      if (!courts.some((c) => c.id === courtId)) throw new Error("이 이벤트의 코트가 아닙니다.");
+
+      const slotCount = slotCountFor(day.plannedMatchCount ?? 0, courts.length);
+      if (slotIndex >= slotCount) throw new Error("이 이벤트에 없는 시간대입니다.");
+
+      // 회원은 "참여"로 표시된 사람만, 게스트는 이 이벤트의 게스트만 배치할 수 있다.
+      const allowedIds = new Set([...attending.map((a) => a.userId), ...guests.map((g) => g.id)]);
+      const notAllowed = playerIds.filter((id) => !allowedIds.has(id));
+      if (notAllowed.length > 0) {
+        throw new Error("참가자 명단에 없는 사람이 포함되어 있습니다. 새로고침 후 다시 시도해주세요.");
+      }
+
+      // 같은 시간대 중복 검증(최종 방어선).
+      const slotMatches = await tx.match.findMany({
+        where: { matchDayId: dayId, slotIndex },
+        select: {
+          id: true,
+          slotIndex: true,
+          teamAPlayer1: true,
+          teamAPlayer2: true,
+          teamBPlayer1: true,
+          teamBPlayer2: true,
+        },
+      });
+      const busy = playerIdsBusyInSlot(
+        slotMatches,
+        slotIndex,
+        typeof matchId === "string" && matchId ? matchId : undefined
+      );
+      const conflicting = playerIds.filter((id) => busy.has(id));
+      if (conflicting.length > 0) {
+        throw new Error("같은 시간대에 이미 배정된 참가자가 있습니다. 새로고침 후 다시 시도해주세요.");
+      }
+
+      const payload = {
+        type: data.type,
+        teamAPlayer1: data.teamAPlayer1,
+        teamAPlayer2: data.type === "DOUBLES" ? data.teamAPlayer2 : null,
+        teamBPlayer1: data.teamBPlayer1,
+        teamBPlayer2: data.type === "DOUBLES" ? data.teamBPlayer2 : null,
+      };
+
+      if (typeof matchId === "string" && matchId) {
+        const existing = await tx.match.findUniqueOrThrow({
+          where: { id: matchId },
+          select: { matchDayId: true, status: true },
+        });
+        if (existing.matchDayId !== dayId) throw new Error("이 이벤트의 경기가 아닙니다.");
+        // 이미 승인된(ELO 반영된) 경기의 선수 구성을 바꾸면 레이팅 이력과
+        // 어긋나므로, 점수 입력 전(PENDING)에만 수정할 수 있다.
+        if (existing.status !== "PENDING") {
+          throw new Error("이미 결과가 확정된 경기는 대진을 바꿀 수 없습니다.");
+        }
+        await tx.match.update({ where: { id: matchId }, data: { ...payload, courtId, slotIndex } });
+      } else {
+        await tx.match.create({
+          data: { ...payload, matchDayId: dayId, courtId, slotIndex, submittedBy: admin.id },
+        });
+      }
+    });
+  } catch (e) {
+    // @@unique([matchDayId, courtId, slotIndex]) 위반 등 — 동시 편집으로 그 칸이
+    // 방금 채워진 경우.
+    const message = e instanceof Error ? e.message : "";
+    if (message.includes("Unique constraint")) {
+      return { error: "그 코트·시간대에 이미 다른 경기가 배치되었습니다. 새로고침 후 다시 시도해주세요." };
+    }
+    return { error: message || "대진 배치에 실패했습니다." };
+  }
+
+  revalidatePath(`/matches/${dayId}`);
+  revalidatePath("/matches");
+  revalidatePath("/admin");
+  return { success: true };
 }

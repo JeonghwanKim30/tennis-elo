@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import type { Match } from "@/generated/prisma/client";
 import { Avatar } from "@/components/Avatar";
-import { avatarSrc } from "@/lib/avatar";
+import { buildPlayerDirectory } from "@/lib/playerDirectory";
 import type { TeamPlayer } from "@/components/TeamBadges";
 import { SearchForm } from "./SearchForm";
 import { RecentMatchList, type RecentMatchItem } from "./RecentMatchList";
@@ -40,7 +40,7 @@ export default async function H2HPage({
   // players 목록과 matches 조회는 서로 결과를 참조하지 않는다(matches는
   // playerId만 있으면 되고, players는 검색창용 전체 목록이라 playerId와
   // 무관) — Promise.all로 동시에 보내 원격 DB 왕복을 1번으로 줄인다.
-  const [players, matches] = await Promise.all([
+  const [players, matches, allGuests] = await Promise.all([
     prisma.user.findMany({
       where: { status: "ACTIVE" },
       select: { id: true, name: true, gender: true, profileImage: true, profileImageType: true },
@@ -61,14 +61,18 @@ export default async function H2HPage({
           orderBy: { approvalSeq: "desc" },
         })
       : Promise.resolve<MatchWithDay[]>([]),
+    // 특수 이벤트(MT/대회) 게스트 — 회원과 같은 자리로 경기에 들어가므로 함께
+    // 받아야 그 경기가 상대전적 목록에서 누락되지 않는다(lib/playerDirectory.ts).
+    prisma.eventGuest.findMany({ select: { id: true, name: true, gender: true } }),
   ]);
   // 검색창(클라이언트 컴포넌트)에는 이름 검색에 필요한 최소 정보만 넘긴다.
   // profileImage(Bytes)는 서버-클라이언트 경계를 못 넘어가므로 여기서 걸러낸다.
   const searchablePlayers = players.map((p) => ({ id: p.id, name: p.name }));
-  const nameById = new Map(players.map((p) => [p.id, p.name]));
-  const playerById = new Map<string, TeamPlayer>(
-    players.map((p) => [p.id, { id: p.id, name: p.name, avatarSrc: avatarSrc(p) }])
-  );
+  const nameById = new Map([
+    ...players.map((p) => [p.id, p.name] as const),
+    ...allGuests.map((g) => [g.id, g.name] as const),
+  ]);
+  const playerById = buildPlayerDirectory(players, allGuests);
 
   const totalsByOpponent = new Map<string, { wins: number; losses: number; draws: number }>();
 

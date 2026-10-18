@@ -7,6 +7,7 @@ import {
   isCrossGenderSingles,
   outcomeFromScores,
   INITIAL_RATING,
+  PROVISIONAL_GAMES_THRESHOLD,
   type MatchOutcome,
   type PlayerGender,
 } from "@/lib/elo";
@@ -16,6 +17,7 @@ type Tx = Prisma.TransactionClient;
 
 interface MatchPlayers {
   id: string;
+  matchDayId: string;
   type: MatchType;
   teamAPlayer1: string;
   teamAPlayer2: string | null;
@@ -25,10 +27,77 @@ interface MatchPlayers {
   teamBScore: number;
 }
 
+// 한 경기에 등장하는 선수의 계산 입력값 — 회원은 EloRating에서, 게스트는
+// 관리자가 입력한 MMR에서 온다.
+interface ResolvedPlayer {
+  rating: number;
+  gamesPlayed: number;
+  gender: PlayerGender;
+  // 회원만 EloRating/EloHistory에 기록한다(게스트는 User FK가 없어 애초에 불가).
+  isMember: boolean;
+  // 회원의 반영 전 레이팅 — EloHistory.ratingBefore로 쓴다.
+  ratingBefore?: number;
+}
+
+/**
+ * 경기에 등장하는 모든 id를 회원/게스트로 나눠 레이팅과 성별을 해결한다.
+ *
+ * 특수 이벤트(MT/대회)에는 계정이 없는 외부 게스트가 섞여 들어오는데,
+ * Match.teamAPlayer* 는 FK가 아닌 순수 String 컬럼이라 게스트 id가 그대로
+ * 들어가 있다. 반면 EloRating/EloHistory.userId는 User FK라서 게스트에게는
+ * 행을 만들 수 없다 — 그래서 게스트는 "상대 실력 추정치"로 계산에만 참여하고
+ * 자신의 레이팅은 남기지 않는다.
+ */
+async function resolvePlayers(tx: Tx, playerIds: string[]): Promise<Map<string, ResolvedPlayer>> {
+  const [userRows, guestRows] = await Promise.all([
+    tx.user.findMany({ where: { id: { in: playerIds } }, select: { id: true, gender: true } }),
+    tx.eventGuest.findMany({
+      where: { id: { in: playerIds } },
+      select: { id: true, gender: true, mmr: true },
+    }),
+  ]);
+
+  const resolved = new Map<string, ResolvedPlayer>();
+
+  for (const guest of guestRows) {
+    resolved.set(guest.id, {
+      rating: guest.mmr,
+      // 게스트의 레이팅은 추적하지 않으므로 "배치 중"으로 둘 이유가 없다. 복식 K는
+      // 팀원 중 최소 경기 수를 쓰는데(Math.min), 게스트를 0경기로 두면 같은 팀
+      // 회원의 K까지 배치 구간으로 끌어올려 회원 레이팅이 과하게 흔들린다.
+      gamesPlayed: PROVISIONAL_GAMES_THRESHOLD,
+      gender: guest.gender,
+      isMember: false,
+    });
+  }
+
+  // 회원은 아래에서 EloRating 실제 값으로 덮어쓴다(여기서는 자리만 만든다).
+  for (const user of userRows) {
+    resolved.set(user.id, {
+      rating: INITIAL_RATING,
+      gamesPlayed: 0,
+      gender: user.gender,
+      isMember: true,
+    });
+  }
+
+  const unknown = playerIds.filter((id) => !resolved.has(id));
+  if (unknown.length > 0) {
+    // 배정된 채로 삭제된 게스트 등 — 조용히 1200으로 계산하면 레이팅이 잘못
+    // 반영되므로 명확히 실패시킨다.
+    throw new Error("경기에 존재하지 않는 참가자가 있습니다: " + unknown.join(", "));
+  }
+
+  return resolved;
+}
+
 /**
  * 한 경기의 결과를 EloRating/EloHistory에 반영하고, 경기 자체(Match)에도
  * 팀별 ELO 변동량을 기록한다. 새 경기 승인, 그리고 삭제 후 전체
  * 재계산(replay) 양쪽에서 공용으로 사용한다.
+ *
+ * 특수 이벤트의 eloMode가 NONE이면 스코어/승패만 남기고 레이팅은 전혀 건드리지
+ * 않는다(MT 기본값) — 재계산 replay도 같은 판정을 거치므로 결과가 일관된다.
  */
 export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: MatchResult) {
   const teamAIds = [match.teamAPlayer1, match.teamAPlayer2].filter(
@@ -39,27 +108,43 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
   );
   const allIds = [...teamAIds, ...teamBIds];
 
-  await tx.eloRating.createMany({
-    data: allIds.map((userId) => ({ userId, type: match.type, rating: INITIAL_RATING })),
-    skipDuplicates: true,
+  // 이벤트 경기는 eloMode에 따라 레이팅 반영 자체를 건너뛴다.
+  const matchDay = await tx.matchDay.findUniqueOrThrow({
+    where: { id: match.matchDayId },
+    select: { kind: true, eloMode: true },
   });
+  if (matchDay.kind === "SPECIAL" && matchDay.eloMode === "NONE") return;
 
-  const [ratingRows, userRows] = await Promise.all([
-    tx.eloRating.findMany({ where: { userId: { in: allIds }, type: match.type } }),
-    tx.user.findMany({ where: { id: { in: allIds } }, select: { id: true, gender: true } }),
-  ]);
-  const ratingByUser = new Map(ratingRows.map((r) => [r.userId, r]));
-  const genderByUser = new Map<string, PlayerGender>(userRows.map((u) => [u.id, u.gender]));
-  const gamesPlayed = (userId: string) => {
-    const r = ratingByUser.get(userId)!;
-    return r.wins + r.losses + r.draws;
+  const players = await resolvePlayers(tx, allIds);
+  const memberIds = allIds.filter((id) => players.get(id)!.isMember);
+
+  if (memberIds.length > 0) {
+    await tx.eloRating.createMany({
+      data: memberIds.map((userId) => ({ userId, type: match.type, rating: INITIAL_RATING })),
+      skipDuplicates: true,
+    });
+    const ratingRows = await tx.eloRating.findMany({
+      where: { userId: { in: memberIds }, type: match.type },
+    });
+    for (const row of ratingRows) {
+      const player = players.get(row.userId)!;
+      player.rating = row.rating;
+      player.ratingBefore = row.rating;
+      player.gamesPlayed = row.wins + row.losses + row.draws;
+    }
+  }
+
+  const inputOf = (id: string) => {
+    const p = players.get(id)!;
+    return { rating: p.rating, gamesPlayed: p.gamesPlayed };
   };
+  const genderOf = (id: string) => players.get(id)!.gender;
 
   // 남/녀 단식·복식 매치 특성을 반영한 보정 배율(lib/elo.ts 참고).
   const genderMultiplier =
     match.type === "SINGLES"
-      ? singlesGenderMultiplier(genderByUser.get(teamAIds[0])!, genderByUser.get(teamBIds[0])!)
-      : doublesGenderMultiplier(allIds.map((id) => genderByUser.get(id)!));
+      ? singlesGenderMultiplier(genderOf(teamAIds[0]), genderOf(teamBIds[0]))
+      : doublesGenderMultiplier(allIds.map(genderOf));
 
   const outcomeForTeamA: MatchOutcome =
     result === "TEAM_A_WIN" ? "WIN" : result === "TEAM_B_WIN" ? "LOSS" : "DRAW";
@@ -71,10 +156,10 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
   let teamBEloChange: number;
 
   if (match.type === "SINGLES") {
-    const a = ratingByUser.get(teamAIds[0])!;
-    const b = ratingByUser.get(teamBIds[0])!;
-    const genderA = genderByUser.get(teamAIds[0])!;
-    const genderB = genderByUser.get(teamBIds[0])!;
+    const a = inputOf(teamAIds[0]);
+    const b = inputOf(teamBIds[0]);
+    const genderA = genderOf(teamAIds[0]);
+    const genderB = genderOf(teamBIds[0]);
 
     // 남녀 단식(성별이 다른 단식)이면 여성 쪽 점수에 보너스 세트를 더한다.
     // 실제 경기 기록/전적(teamAScore, outcomeForTeamA로 계산되는 승/패
@@ -96,9 +181,9 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
 
     const eloResult = calculateSinglesElo(
       a.rating,
-      gamesPlayed(teamAIds[0]),
+      a.gamesPlayed,
       b.rating,
-      gamesPlayed(teamBIds[0]),
+      b.gamesPlayed,
       scoreA,
       scoreB,
       eloOutcomeForTeamA,
@@ -111,19 +196,9 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
     teamAEloChange = eloResult.deltaA;
     teamBEloChange = eloResult.deltaB;
   } else {
-    const a1 = ratingByUser.get(teamAIds[0])!;
-    const a2 = ratingByUser.get(teamAIds[1])!;
-    const b1 = ratingByUser.get(teamBIds[0])!;
-    const b2 = ratingByUser.get(teamBIds[1])!;
     const eloResult = calculateDoublesElo(
-      [
-        { rating: a1.rating, gamesPlayed: gamesPlayed(teamAIds[0]) },
-        { rating: a2.rating, gamesPlayed: gamesPlayed(teamAIds[1]) },
-      ],
-      [
-        { rating: b1.rating, gamesPlayed: gamesPlayed(teamBIds[0]) },
-        { rating: b2.rating, gamesPlayed: gamesPlayed(teamBIds[1]) },
-      ],
+      [inputOf(teamAIds[0]), inputOf(teamAIds[1])],
+      [inputOf(teamBIds[0]), inputOf(teamBIds[1])],
       match.teamAScore,
       match.teamBScore,
       outcomeForTeamA,
@@ -139,8 +214,9 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
     teamBEloChange = eloResult.deltaB;
   }
 
-  for (const userId of allIds) {
-    const before = ratingByUser.get(userId)!;
+  // 게스트는 EloRating/EloHistory에 행을 만들 수 없으므로(User FK) 회원만 기록한다.
+  for (const userId of memberIds) {
+    const before = players.get(userId)!.ratingBefore!;
     const after = newRatings.get(userId)!;
     const outcome = teamAIds.includes(userId) ? outcomeForTeamA : outcomeForTeamB;
 
@@ -159,9 +235,9 @@ export async function applyEloForMatch(tx: Tx, match: MatchPlayers, result: Matc
         matchId: match.id,
         userId,
         type: match.type,
-        ratingBefore: before.rating,
+        ratingBefore: before,
         ratingAfter: after,
-        delta: after - before.rating,
+        delta: after - before,
       },
     });
   }
