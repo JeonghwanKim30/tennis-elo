@@ -15,6 +15,10 @@ export interface EventSlot {
   endLabel: string;
   /** "15:00~16:00" */
   rangeLabel: string;
+  /** "1라운드" — 슬롯은 0-based지만 사람이 읽는 라운드는 1부터 센다. */
+  roundLabel: string;
+  /** "R1" — 코트 카드 모서리처럼 좁은 자리에 쓰는 짧은 표기. */
+  roundShortLabel: string;
 }
 
 /** "15:00" -> 900(분). 형식이 어긋나면 null. */
@@ -78,12 +82,17 @@ export function buildEventSlots({
       : null;
 
   return Array.from({ length: slotCount }, (_, index) => {
+    const roundLabel = `${index + 1}라운드`;
+    const roundShortLabel = `R${index + 1}`;
     if (startMinutes === null || span === null || span <= 0) {
       return {
         index,
         startLabel: "",
         endLabel: "",
-        rangeLabel: `${index + 1}번째 시간대`,
+        // 시간을 입력하지 않은 이벤트에서는 라운드 자체가 유일한 구분 기준이 된다.
+        rangeLabel: roundLabel,
+        roundLabel,
+        roundShortLabel,
       };
     }
     const slotMinutes = span / slotCount;
@@ -91,7 +100,14 @@ export function buildEventSlots({
     const to = Math.round(startMinutes + slotMinutes * (index + 1));
     const startLabel = formatMinutes(from);
     const endLabel = formatMinutes(to);
-    return { index, startLabel, endLabel, rangeLabel: `${startLabel}~${endLabel}` };
+    return {
+      index,
+      startLabel,
+      endLabel,
+      rangeLabel: `${startLabel}~${endLabel}`,
+      roundLabel,
+      roundShortLabel,
+    };
   });
 }
 

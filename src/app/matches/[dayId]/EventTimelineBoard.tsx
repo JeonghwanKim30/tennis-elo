@@ -117,7 +117,7 @@ export function EventTimelineBoard({
           className="grid gap-2"
           style={{ gridTemplateColumns: `5.5rem repeat(${courts.length}, minmax(0, 1fr))` }}
         >
-          <div />
+          <div className="pb-1 text-center text-xs font-semibold text-muted-foreground">라운드</div>
           {courts.map((c) => (
             <div key={c.id} className="px-1 pb-1 text-center text-sm font-semibold">
               {c.name}
@@ -140,13 +140,19 @@ export function EventTimelineBoard({
       <div className="space-y-4 sm:hidden">
         {slots.map((slot) => (
           <div key={slot.index}>
-            <p className="mb-2 text-sm font-semibold">{slot.rangeLabel}</p>
+            <div className="mb-2 flex items-center gap-2 border-b border-amber-200/70 pb-1.5">
+              <span className="shrink-0 rounded-full bg-amber-200/70 px-2.5 py-0.5 text-xs font-bold text-amber-900">
+                {slot.roundLabel}
+              </span>
+              {slot.startLabel && <span className="text-sm font-semibold">{slot.rangeLabel}</span>}
+            </div>
             <div className="space-y-2">
               {courts.map((court) => (
                 <TimelineCell
                   key={court.id}
                   courtName={court.name}
                   match={byCell.get(`${slot.index}:${court.id}`) ?? null}
+                  roundShortLabel={slot.roundShortLabel}
                   canManage={canManage}
                   onEdit={() => setEditing({ slotIndex: slot.index, court })}
                 />
@@ -187,13 +193,20 @@ function TimelineRow({
 }) {
   return (
     <>
-      <div className="flex items-center justify-end pr-1 text-xs font-medium text-muted-foreground">
-        {slot.rangeLabel}
+      {/* 시간 축 칸 — 라운드 번호를 뱃지로 먼저 보여주고 그 아래 시간대를 적는다. */}
+      <div className="flex flex-col items-end justify-center gap-1 pr-1">
+        <span className="rounded-full bg-amber-200/70 px-2 py-0.5 text-[11px] font-bold text-amber-900">
+          {slot.roundLabel}
+        </span>
+        {slot.startLabel && (
+          <span className="text-[11px] font-medium text-muted-foreground">{slot.rangeLabel}</span>
+        )}
       </div>
       {courts.map((court) => (
         <TimelineCell
           key={court.id}
           match={byCell.get(`${slot.index}:${court.id}`) ?? null}
+          roundShortLabel={slot.roundShortLabel}
           canManage={canManage}
           onEdit={() => onEdit(court)}
         />
@@ -205,11 +218,14 @@ function TimelineRow({
 function TimelineCell({
   courtName,
   match,
+  roundShortLabel,
   canManage,
   onEdit,
 }: {
   courtName?: string;
   match: EventPlacedMatch | null;
+  /** "R1" — 어느 라운드의 경기인지 카드 안에서도 바로 보이게 한다. */
+  roundShortLabel: string;
   canManage: boolean;
   onEdit: () => void;
 }) {
@@ -235,9 +251,14 @@ function TimelineCell({
   const body = (
     <>
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <span className="text-[11px] font-medium text-muted-foreground">
-          {courtName ? `${courtName} · ` : ""}
-          {match.type === "SINGLES" ? "단식" : "복식"}
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="shrink-0 rounded-md bg-amber-200/70 px-1.5 py-0.5 text-[10px] font-bold text-amber-900">
+            {roundShortLabel}
+          </span>
+          <span className="truncate text-[11px] font-medium text-muted-foreground">
+            {courtName ? `${courtName} · ` : ""}
+            {match.type === "SINGLES" ? "단식" : "복식"}
+          </span>
         </span>
         {match.isLocked && (
           <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
@@ -375,7 +396,7 @@ function PlacementModal({
     >
       <ModalHeader
         id="placement-title"
-        title={`${court.name} · ${slot.rangeLabel}`}
+        title={`[${slot.roundLabel}] ${court.name} · ${slot.rangeLabel}`}
         onClose={onClose}
       />
 

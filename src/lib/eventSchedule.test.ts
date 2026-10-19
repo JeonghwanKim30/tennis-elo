@@ -72,6 +72,23 @@ describe("buildEventSlots", () => {
     expect(slots.map((s) => s.index)).toEqual([0, 1, 2, 3]);
   });
 
+  it("numbers rounds from 1 up to N in order", () => {
+    const slots = buildEventSlots({
+      startTime: "15:00",
+      endTime: "19:00",
+      plannedMatchCount: 9,
+      courtCount: 3,
+    });
+    expect(slots.map((s) => s.roundLabel)).toEqual(["1라운드", "2라운드", "3라운드"]);
+    expect(slots.map((s) => s.roundShortLabel)).toEqual(["R1", "R2", "R3"]);
+  });
+
+  it("falls back to the round label as the range when no time is set", () => {
+    const slots = buildEventSlots({ plannedMatchCount: 4, courtCount: 2 });
+    expect(slots.map((s) => s.rangeLabel)).toEqual(["1라운드", "2라운드"]);
+    expect(slots.map((s) => s.roundLabel)).toEqual(["1라운드", "2라운드"]);
+  });
+
   it("handles a span that does not divide evenly", () => {
     const slots = buildEventSlots({
       startTime: "15:00",
@@ -99,7 +116,8 @@ describe("buildEventSlots", () => {
       plannedMatchCount: 4,
       courtCount: 2,
     });
-    expect(slots.map((s) => s.rangeLabel)).toEqual(["1번째 시간대", "2번째 시간대"]);
+    // 시간이 없으면 라운드 번호가 유일한 구분 기준이 된다.
+    expect(slots.map((s) => s.rangeLabel)).toEqual(["1라운드", "2라운드"]);
     expect(slots.every((s) => s.startLabel === "")).toBe(true);
   });
 
