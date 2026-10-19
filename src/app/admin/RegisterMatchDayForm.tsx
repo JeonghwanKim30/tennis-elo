@@ -2,16 +2,10 @@
 
 import { useActionState } from "react";
 import { kstDateString } from "@/lib/date";
+import { TimePicker } from "@/components/TimePicker";
 import { createMatchDayAction, type CreateDayState } from "./actions";
 
 const initialState: CreateDayState = {};
-
-// 30분 단위(00/30분)로만 고를 수 있도록 자유 입력 대신 드롭다운 옵션을 만든다.
-const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
-  const hour = String(Math.floor(i / 2)).padStart(2, "0");
-  const minute = i % 2 === 0 ? "00" : "30";
-  return `${hour}:${minute}`;
-});
 
 export function RegisterMatchDayForm() {
   const [state, formAction, pending] = useActionState(createMatchDayAction, initialState);
@@ -28,20 +22,9 @@ export function RegisterMatchDayForm() {
           className="mt-1 w-full max-w-full appearance-none rounded-xl border border-border px-3 py-2 text-sm"
         />
       </div>
-      <div className="w-full max-w-full md:min-w-[7rem] md:flex-1">
+      <div className="w-full max-w-full md:min-w-[12rem] md:flex-[1.5]">
         <label className="block text-xs font-medium text-muted-foreground">시간</label>
-        <select
-          name="time"
-          defaultValue=""
-          className="mt-1 w-full max-w-full appearance-none rounded-xl border border-border px-3 py-2 text-sm"
-        >
-          <option value="">시간 미정</option>
-          {TIME_OPTIONS.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
+        <TimePicker name="time" allowEmpty ariaLabel="경기 시간" />
       </div>
       <div className="w-full max-w-full md:min-w-[9rem] md:flex-[2]">
         <label className="block text-xs font-medium text-muted-foreground">장소</label>

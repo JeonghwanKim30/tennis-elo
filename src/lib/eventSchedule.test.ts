@@ -43,6 +43,16 @@ describe("slotCountFor", () => {
     expect(slotCountFor(0, 3)).toBe(0);
     expect(slotCountFor(12, 0)).toBe(0);
   });
+
+  // 이벤트 생성 폼이 "코트 수 x 라운드 수"로 총 경기 수를 만들므로, 그 값을
+  // 되돌리면 입력한 라운드 수가 정확히 나와야 한다(남는 코트 없이 꽉 찬 라운드).
+  it("round-trips the 코트 수 × 라운드 수 formula exactly", () => {
+    for (const courts of [1, 2, 3, 4, 8]) {
+      for (const rounds of [1, 3, 5, 12]) {
+        expect(slotCountFor(courts * rounds, courts)).toBe(rounds);
+      }
+    }
+  });
 });
 
 describe("buildEventSlots", () => {

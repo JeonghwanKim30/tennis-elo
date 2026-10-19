@@ -71,7 +71,9 @@ const timeOfDaySchema = z
   );
 
 export const MAX_EVENT_COURTS = 8;
-export const MAX_EVENT_MATCHES = 60;
+export const MAX_EVENT_ROUNDS = 12;
+// 총 경기 수는 "코트 수 x 라운드 수"로 정해지므로 상한도 그 곱으로 따라온다.
+export const MAX_EVENT_MATCHES = MAX_EVENT_COURTS * MAX_EVENT_ROUNDS;
 
 export const eventDaySchema = z.object({
   title: z.string().trim().min(1, "이벤트 제목을 입력해주세요.").max(40, "제목은 최대 40자입니다."),
@@ -93,7 +95,18 @@ export const eventDaySchema = z.object({
       message: "코트 이름이 중복되었습니다.",
     }),
   eloMode: z.enum(["NONE", "MEMBERS_ONLY"]),
-});
+})
+  // 총 경기 수는 화면에서 "코트 수 x 라운드 수"로 계산해 보내는 값이다. 클라이언트가
+  // 보낸 값을 그대로 믿으면 코트 수와 어긋난 경기 수가 저장돼 타임라인의 라운드
+  // 수가 의도와 달라지므로, 서버에서도 코트 수로 나누어떨어지는지 확인한다.
+  .refine((data) => data.plannedMatchCount % data.courtNames.length === 0, {
+    message: "총 경기 수는 코트 수의 배수여야 합니다(코트 수 × 라운드 수).",
+    path: ["plannedMatchCount"],
+  })
+  .refine((data) => data.plannedMatchCount / data.courtNames.length <= MAX_EVENT_ROUNDS, {
+    message: `라운드는 최대 ${MAX_EVENT_ROUNDS}라운드까지 가능합니다.`,
+    path: ["plannedMatchCount"],
+  });
 
 // 게스트 MMR 허용 범위 — 티어 구간(lib/tier.ts)을 벗어나는 값이 들어오면
 // 밸런스 계산이 비현실적으로 틀어지므로 상·하한을 둔다.

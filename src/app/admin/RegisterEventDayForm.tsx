@@ -2,18 +2,12 @@
 
 import { useActionState, useState } from "react";
 import { kstDateString } from "@/lib/date";
-import { MAX_EVENT_COURTS, MAX_EVENT_MATCHES } from "@/lib/validation";
+import { MAX_EVENT_COURTS, MAX_EVENT_ROUNDS } from "@/lib/validation";
 import { buildEventSlots } from "@/lib/eventSchedule";
+import { TimePicker } from "@/components/TimePicker";
 import { createEventDayAction, type CreateEventState } from "./actions";
 
 const initialState: CreateEventState = {};
-
-// 30분 단위 드롭다운 — 일반 경기일 등록 폼과 같은 선택지를 쓴다.
-const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
-  const hour = String(Math.floor(i / 2)).padStart(2, "0");
-  const minute = i % 2 === 0 ? "00" : "30";
-  return `${hour}:${minute}`;
-});
 
 const DEFAULT_COURT_NAMES = ["A코트", "B코트", "C코트", "D코트", "E코트", "F코트", "G코트", "H코트"];
 
@@ -26,7 +20,11 @@ export function RegisterEventDayForm() {
   const [courtNames, setCourtNames] = useState<string[]>(() => DEFAULT_COURT_NAMES.slice(0, 3));
   const [startTime, setStartTime] = useState("15:00");
   const [endTime, setEndTime] = useState("19:00");
-  const [matchCount, setMatchCount] = useState(12);
+  // 총 경기 수를 직접 받지 않고 "코트 수 × 라운드 수"로 계산한다 — 직접 입력
+  // 방식은 코트 수와 떨어져 있어서, 예를 들어 3코트에 12경기를 넣으면 4라운드가
+  // 되는 식으로 관리자가 의도한 라운드 수와 어긋났다.
+  const [roundCount, setRoundCount] = useState(3);
+  const matchCount = courtCount * roundCount;
 
   function handleCourtCountChange(next: number) {
     setCourtCount(next);
@@ -76,66 +74,64 @@ export function RegisterEventDayForm() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <div className="flex-1">
           <label className="block text-xs font-medium text-muted-foreground">시작 시간</label>
-          <select
+          <TimePicker
             name="startTime"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            className="mt-1 w-full appearance-none rounded-xl border border-border bg-white px-3 py-2 text-sm"
-          >
-            {TIME_OPTIONS.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
+            defaultValue={startTime}
+            ariaLabel="시작 시간"
+            onChange={setStartTime}
+          />
         </div>
         <div className="flex-1">
           <label className="block text-xs font-medium text-muted-foreground">종료 시간</label>
+          <TimePicker name="endTime" defaultValue={endTime} ariaLabel="종료 시간" onChange={setEndTime} />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="flex-1">
+          <label className="block text-xs font-medium text-muted-foreground">코트 수</label>
           <select
-            name="endTime"
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
+            value={courtCount}
+            onChange={(e) => handleCourtCountChange(Number(e.target.value))}
             className="mt-1 w-full appearance-none rounded-xl border border-border bg-white px-3 py-2 text-sm"
           >
-            {TIME_OPTIONS.map((t) => (
-              <option key={t} value={t}>
-                {t}
+            {Array.from({ length: MAX_EVENT_COURTS }, (_, i) => i + 1).map((n) => (
+              <option key={n} value={n}>
+                {n}개 코트
               </option>
             ))}
           </select>
         </div>
         <div className="flex-1">
-          <label className="block text-xs font-medium text-muted-foreground">총 경기 수</label>
-          <input
-            name="plannedMatchCount"
-            type="number"
-            min={1}
-            max={MAX_EVENT_MATCHES}
-            required
-            value={matchCount}
-            onChange={(e) => setMatchCount(Number(e.target.value))}
+          <label className="block text-xs font-medium text-muted-foreground">라운드 수</label>
+          <select
+            value={roundCount}
+            onChange={(e) => setRoundCount(Number(e.target.value))}
             className="mt-1 w-full appearance-none rounded-xl border border-border bg-white px-3 py-2 text-sm"
-          />
+          >
+            {Array.from({ length: MAX_EVENT_ROUNDS }, (_, i) => i + 1).map((n) => (
+              <option key={n} value={n}>
+                {n}라운드
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex-1">
+          <span className="block text-xs font-medium text-muted-foreground">총 경기 수</span>
+          {/* 코트 수 x 라운드 수로 자동 계산된다 — 서버에도 이 값을 그대로 보낸다. */}
+          <input type="hidden" name="plannedMatchCount" value={matchCount} />
+          <p className="mt-1 rounded-xl bg-white/70 px-3 py-2 text-sm font-semibold text-amber-900">
+            {courtCount} × {roundCount} = {matchCount}경기
+          </p>
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-muted-foreground">코트 개수</label>
-        <select
-          value={courtCount}
-          onChange={(e) => handleCourtCountChange(Number(e.target.value))}
-          className="mt-1 w-full appearance-none rounded-xl border border-border bg-white px-3 py-2 text-sm sm:w-32"
-        >
-          {Array.from({ length: MAX_EVENT_COURTS }, (_, i) => i + 1).map((n) => (
-            <option key={n} value={n}>
-              {n}개
-            </option>
-          ))}
-        </select>
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <label className="block text-xs font-medium text-muted-foreground">코트 이름</label>
+        <div className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {courtNames.map((name, i) => (
             <input
               key={i}
@@ -168,7 +164,8 @@ export function RegisterEventDayForm() {
 
       {slots.length > 0 && (
         <p className="rounded-xl bg-white/70 px-3 py-2 text-xs text-amber-900/80">
-          {courtCount}코트 × {slots.length}개 시간대로 나뉩니다 — {slots.map((s) => s.rangeLabel).join(" / ")}
+          코트 {courtCount}개 × {slots.length}라운드 = 경기 {matchCount}개로 아래 시간대에 생성됩니다 —{" "}
+          {slots.map((s) => s.rangeLabel).join(" / ")}
         </p>
       )}
 
